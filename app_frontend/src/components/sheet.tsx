@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -67,21 +68,26 @@ type SheetButtonProps = {
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
   disabled?: boolean;
+  /** Mostra um spinner e bloqueia o toque enquanto a mutation está em andamento. */
+  loading?: boolean;
 };
 
-export function SheetButton({ label, onPress, variant = 'primary', disabled }: SheetButtonProps) {
+export function SheetButton({ label, onPress, variant = 'primary', disabled, loading }: SheetButtonProps) {
+  const spinnerColor = variant === 'primary' ? colors.background : variant === 'danger' ? colors.danger : colors.text;
   return (
     <Pressable
       style={[
         styles.button,
         variant === 'secondary' && styles.buttonSecondary,
         variant === 'danger' && styles.buttonDanger,
-        disabled && styles.buttonDisabled,
+        (disabled || loading) && styles.buttonDisabled,
       ]}
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || loading}
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled, busy: !!loading }}
     >
+      {loading && <ActivityIndicator size="small" color={spinnerColor} style={styles.buttonSpinner} />}
       <Text
         style={[
           styles.buttonLabel,
@@ -165,10 +171,14 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     gap: 10,
   },
+  buttonSpinner: {
+    marginRight: 8,
+  },
   button: {
     height: 50,
     borderRadius: 12,
     backgroundColor: colors.text,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },

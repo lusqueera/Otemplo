@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Feather } from '@expo/vector-icons';
@@ -24,23 +23,20 @@ function formatElapsed(seconds: number) {
 
 export function WorkoutCard({ workout, onMore, onCreate }: WorkoutCardProps) {
   const session = useTrainingStore((s) => s.session);
-  const tick = useTrainingStore((s) => s.tick);
   const finish = useFinishTrainingSession();
 
   const startSession = () => workout && useTrainingStore.getState().startSession(workout.id);
   // Fecha o cronômetro e registra a sessão no servidor (marca o dia e limpa os checks)
   const finishSession = () => {
     const ended = useTrainingStore.getState().finishSession();
-    if (ended) finish.mutate({ workoutId: ended.workoutId, durationSeconds: ended.elapsedSeconds });
+    if (ended)
+      finish.mutate({
+        workoutId: ended.workoutId,
+        durationSeconds: ended.elapsedSeconds,
+      });
   };
 
   const active = !!session && session.workoutId === workout?.id;
-
-  useEffect(() => {
-    if (!active) return;
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [active, tick]);
 
   if (!workout) {
     return (
@@ -76,7 +72,9 @@ export function WorkoutCard({ workout, onMore, onCreate }: WorkoutCardProps) {
       <View style={styles.stats}>
         <View style={styles.stat}>
           <Text style={styles.statLabel}>Exercícios</Text>
-          <Text style={styles.statValue}>{total} {total === 1 ? 'item' : 'itens'}</Text>
+          <Text style={styles.statValue}>
+            {total} {total === 1 ? 'item' : 'itens'}
+          </Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.statLabel}>Duração</Text>

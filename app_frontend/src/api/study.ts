@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { stale } from '@/lib/query-client';
 import { api, apiList } from '@/lib/api';
 import { weekKey } from '@/lib/week';
 import type { Flashcard, ScheduleBlock, ScheduleStatus, Subject } from '@/screens/study/data';
 import { keys } from './keys';
+import { invalidate } from './invalidate';
 import { compact, dec, hhmm, num } from './mappers';
 
 // ---- Matérias
@@ -27,6 +29,7 @@ const fromSubject = (i: Partial<SubjectInput>) =>
 export function useSubjects() {
   return useQuery({
     queryKey: keys.study.subjects,
+    staleTime: stale.catalog,
     queryFn: async () => (await apiList<ApiSubject>('/api/study/subjects/')).map(toSubject),
   });
 }
@@ -35,7 +38,7 @@ export function useCreateSubject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: SubjectInput) => toSubject(await api<ApiSubject>('/api/study/subjects/', { method: 'POST', body: fromSubject(input) })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.study.subjects }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -44,7 +47,7 @@ export function useUpdateSubject() {
   return useMutation({
     mutationFn: async ({ id, ...input }: { id: string } & Partial<SubjectInput>) =>
       toSubject(await api<ApiSubject>(`/api/study/subjects/${id}/`, { method: 'PATCH', body: fromSubject(input) })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.study.subjects }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -53,7 +56,7 @@ export function useDeleteSubject() {
   return useMutation({
     mutationFn: (id: string) => api<void>(`/api/study/subjects/${id}/`, { method: 'DELETE' }),
     // Flashcards da matéria vão junto (cascata no servidor)
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.study.all }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -76,7 +79,7 @@ export function useCreateBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: ScheduleInput) => toBlock(await api<ApiBlock>('/api/study/schedule/', { method: 'POST', body: input })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['study', 'schedule'] }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -85,7 +88,7 @@ export function useUpdateBlock() {
   return useMutation({
     mutationFn: async ({ id, ...input }: { id: string } & Partial<ScheduleInput>) =>
       toBlock(await api<ApiBlock>(`/api/study/schedule/${id}/`, { method: 'PATCH', body: compact(input) })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['study', 'schedule'] }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -98,7 +101,7 @@ export function useDeleteBlock() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api<void>(`/api/study/schedule/${id}/`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['study', 'schedule'] }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -115,6 +118,7 @@ const fromFlashcard = (i: Partial<FlashcardInput>) => compact({ subject: i.subje
 export function useFlashcards() {
   return useQuery({
     queryKey: keys.study.flashcards,
+    staleTime: stale.catalog,
     queryFn: async () => (await apiList<ApiFlashcard>('/api/study/flashcards/')).map(toFlashcard),
   });
 }
@@ -124,7 +128,7 @@ export function useCreateFlashcard() {
   return useMutation({
     mutationFn: async (input: FlashcardInput) =>
       toFlashcard(await api<ApiFlashcard>('/api/study/flashcards/', { method: 'POST', body: fromFlashcard(input) })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.study.flashcards }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -133,7 +137,7 @@ export function useUpdateFlashcard() {
   return useMutation({
     mutationFn: async ({ id, ...input }: { id: string } & Partial<FlashcardInput>) =>
       toFlashcard(await api<ApiFlashcard>(`/api/study/flashcards/${id}/`, { method: 'PATCH', body: fromFlashcard(input) })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.study.flashcards }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -141,7 +145,7 @@ export function useDeleteFlashcard() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api<void>(`/api/study/flashcards/${id}/`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.study.flashcards }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -151,8 +155,11 @@ export function useReviewFlashcard() {
   return useMutation({
     mutationFn: async ({ id, correct }: { id: string; correct: boolean }) =>
       toFlashcard(await api<ApiFlashcard>(`/api/study/flashcards/${id}/review/`, { method: 'POST', body: { correct } })),
-    onSuccess: (card) =>
-      qc.setQueryData<Flashcard[]>(keys.study.flashcards, (list) => list?.map((c) => (c.id === card.id ? card : c))),
+    onSuccess: (card) => {
+      qc.setQueryData<Flashcard[]>(keys.study.flashcards, (list) => list?.map((c) => (c.id === card.id ? card : c)));
+      // A lista já está certa; só as métricas derivadas (retenção, fila) precisam revalidar
+      void qc.invalidateQueries({ queryKey: ['study', 'stats'] });
+    },
   });
 }
 
@@ -160,7 +167,7 @@ export function useResetReviews() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api<{ reset: number }>('/api/study/flashcards/reset-due/', { method: 'POST' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.study.flashcards }),
+    onSuccess: () => invalidate(qc, 'study'),
   });
 }
 
@@ -180,8 +187,7 @@ export function useLogStudySession() {
     mutationFn: (input: { seconds: number; subjectId?: string }) =>
       api('/api/study/sessions/', { method: 'POST', body: { seconds: input.seconds, subject: input.subjectId ?? null } }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['study', 'hours'] });
-      qc.invalidateQueries({ queryKey: keys.study.subjects });
+      invalidate(qc, 'study');
     },
   });
 }

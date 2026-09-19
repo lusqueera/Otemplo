@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Field, OptionGroup, Stepper } from '@/components/field';
 import { Sheet, SheetButton } from '@/components/sheet';
-import { maskTime, TIME_RE } from '@/lib/format';
+import { maskTime, normalizeTime, TIME_KEYBOARD } from '@/lib/format';
 import { useCreateHabit, useUpdateHabit } from '@/api/habits';
 import { colors } from '@/theme/colors';
 import { GROUP_LABEL, HABIT_ICONS, type Habit, type HabitGroup, type HabitIcon } from '../data';
@@ -45,6 +45,7 @@ const EMPTY = {
 export function HabitFormSheet({ visible, onClose, habit, onDelete }: HabitFormSheetProps) {
   const createHabit = useCreateHabit();
   const updateHabit = useUpdateHabit();
+  const saving = createHabit.isPending || updateHabit.isPending;
 
   const [form, setForm] = useState(EMPTY);
 
@@ -72,8 +73,17 @@ export function HabitFormSheet({ visible, onClose, habit, onDelete }: HabitFormS
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const validTime = !form.scheduledAt || TIME_RE.test(form.scheduledAt);
-  const canSave = form.title.trim().length > 0 && validTime && (form.kind === 'simple' || form.target > 0);
+  // Horário é opcional: vazio passa; preenchido, aceita "7", "730", "07:30"…
+  const scheduledAt = normalizeTime(form.scheduledAt);
+  const validTime = scheduledAt !== null;
+  const blocker = !form.title.trim()
+    ? 'Dê um nome ao hábito.'
+    : !validTime
+      ? 'Horário inválido — use HH:MM ou deixe em branco.'
+      : form.kind === 'quantity' && form.target < 1
+        ? 'A meta diária precisa ser maior que zero.'
+        : null;
+  const canSave = blocker === null;
 
   function handleSave() {
     const input = {
@@ -82,7 +92,7 @@ export function HabitFormSheet({ visible, onClose, habit, onDelete }: HabitFormS
       group: form.group,
       goal: form.goal.trim(),
       icon: form.icon,
-      scheduledAt: form.scheduledAt || undefined,
+      scheduledAt: scheduledAt || undefined,
       quantity:
         form.kind === 'quantity'
           ? {
@@ -94,9 +104,8 @@ export function HabitFormSheet({ visible, onClose, habit, onDelete }: HabitFormS
           : undefined,
     };
     // Trocar de quantitativo para simples limpa a meta no servidor
-    if (habit) updateHabit.mutate({ id: habit.id, clearQuantity: !!habit.quantity && !input.quantity, ...input });
-    else createHabit.mutate(input);
-    onClose();
+    if (habit) updateHabit.mutate({ id: habit.id, clearQuantity: !!habit.quantity && !input.quantity, ...input }, { onSuccess: onClose });
+    else createHabit.mutate(input, { onSuccess: onClose });
   }
 
   return (
@@ -106,7 +115,8 @@ export function HabitFormSheet({ visible, onClose, habit, onDelete }: HabitFormS
       title={habit ? 'Editar hábito' : 'Novo hábito'}
       footer={
         <>
-          <SheetButton label={habit ? 'Salvar alterações' : 'Criar hábito'} onPress={handleSave} disabled={!canSave} />
+          {blocker && <Text style={styles.blocker}>{blocker}</Text>}
+          <SheetButton label={habit ? 'Salvar alterações' : 'Criar hábito'} onPress={handleSave} disabled={!canSave} loading={saving} />
           {habit && onDelete && (
             <SheetButton label="Excluir hábito" variant="danger" onPress={() => onDelete(habit)} />
           )}
@@ -165,9 +175,9 @@ export function HabitFormSheet({ visible, onClose, habit, onDelete }: HabitFormS
         placeholder="22:00"
         value={form.scheduledAt}
         onChangeText={(v) => patch('scheduledAt', maskTime(v))}
-        keyboardType="number-pad"
+        keyboardType={TIME_KEYBOARD}
         maxLength={5}
-        hint={!validTime ? 'Use o formato HH:MM.' : undefined}
+        hint={!validTime ? 'Use o formato HH:MM.' : 'Opcional.'}
       />
 
       <OptionGroup label="Acompanhamento" options={KIND_OPTIONS} value={form.kind} onChange={(v) => patch('kind', v)} />
@@ -205,6 +215,12 @@ export function HabitFormSheet({ visible, onClose, habit, onDelete }: HabitFormS
 }
 
 const styles = StyleSheet.create({
+  blocker: {
+    color: colors.muted,
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
   field: {
     gap: 8,
   },

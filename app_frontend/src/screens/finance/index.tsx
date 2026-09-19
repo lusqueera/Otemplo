@@ -55,7 +55,7 @@ export default function FinanceScreen() {
   // Sheet "todas as movimentações": histórico completo, carregado só quando aberto
   const { data: transactions = [] } = useTransactions('overview', 0, sheet.kind === 'tx-all');
   const deleteTransaction = useDeleteTransaction();
-  const { income = 0, expenses = 0, net = 0 } = summary ?? {};
+  const { income = 0, expenses = 0, net = 0, investment = 0 } = summary ?? {};
   const netWorth = summary?.totalAllocation ?? 0;
   const { data: stats } = useFinanceStats(period, monthOffset);
   const { data: evolutionPoints = [] } = useNetWorthEvolution(6);
@@ -115,13 +115,13 @@ export default function FinanceScreen() {
               label="Patrimônio total"
               badge={formatPct(stats?.netWorthChangePct, ' mês')}
               value={formatBRL(netWorth, { compact: true })}
-              hint="Liquidez & Investimentos"
+              hint={investment > 0 ? `Aportes no período: ${formatBRL(investment, { compact: true })}` : 'Liquidez & Investimentos'}
             />
             <KpiTile
               label="Fluxo líquido"
               badge={formatBRL(net, { compact: true, sign: true })}
               value={formatBRL(net, { compact: true, sign: true })}
-              hint={period === 'month' ? 'Entradas vs Despesas' : 'No período selecionado'}
+              hint={period === 'month' ? 'Renda − despesas (aportes não contam)' : 'No período selecionado'}
             />
           </View>
           <View style={styles.gridRow}>

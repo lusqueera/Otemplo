@@ -31,6 +31,7 @@ const EMPTY = {
 export function SubjectFormSheet({ visible, onClose, subject, onDelete }: SubjectFormSheetProps) {
   const createSubject = useCreateSubject();
   const updateSubject = useUpdateSubject();
+  const saving = createSubject.isPending || updateSubject.isPending;
 
   const [form, setForm] = useState(EMPTY);
 
@@ -65,9 +66,8 @@ export function SubjectFormSheet({ visible, onClose, subject, onDelete }: Subjec
       description: form.description.trim(),
       hoursDone: Math.min(form.hoursDone, form.hoursGoal),
     };
-    if (subject) updateSubject.mutate({ id: subject.id, ...input });
-    else createSubject.mutate(input);
-    onClose();
+    if (subject) updateSubject.mutate({ id: subject.id, ...input }, { onSuccess: onClose });
+    else createSubject.mutate(input, { onSuccess: onClose });
   }
 
   return (
@@ -77,7 +77,7 @@ export function SubjectFormSheet({ visible, onClose, subject, onDelete }: Subjec
       title={subject ? 'Editar matéria' : 'Nova matéria'}
       footer={
         <>
-          <SheetButton label={subject ? 'Salvar alterações' : 'Adicionar matéria'} onPress={handleSave} disabled={!canSave} />
+          <SheetButton label={subject ? 'Salvar alterações' : 'Adicionar matéria'} onPress={handleSave} disabled={!canSave} loading={saving} />
           {subject && onDelete && (
             <SheetButton label="Excluir matéria" variant="danger" onPress={() => onDelete(subject)} />
           )}

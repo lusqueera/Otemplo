@@ -246,18 +246,20 @@ class FinanceTests(AuthMixin, APITestCase):
     def test_summary_and_period_filter(self):
         self._tx("income", 1000)
         self._tx("essential", 300)
+        self._tx("investment", 150)  # aporte: não conta como despesa nem reduz o saldo
         self._tx("investment", 200, days_ago=400)  # fora do mês/ano
         self.client.post(reverse("asset-class-list"), {"name": "Renda Fixa", "amount": "5000"}, format="json")
 
         month = self.client.get(reverse("transaction-summary")).json()
         self.assertEqual(month["income"], "1000.00")
         self.assertEqual(month["expenses"], "300.00")
+        self.assertEqual(month["investment"], "150.00")
         self.assertEqual(month["net"], "700.00")
         self.assertEqual(month["totalAllocation"], "5000.00")
 
         overview = self.client.get(reverse("transaction-summary") + "?period=overview").json()
-        self.assertEqual(overview["investment"], "200.00")
-        self.assertEqual(self.client.get(reverse("transaction-list") + "?period=overview").json()["count"], 3)
+        self.assertEqual(overview["investment"], "350.00")
+        self.assertEqual(self.client.get(reverse("transaction-list") + "?period=overview").json()["count"], 4)
 
     def test_amount_must_be_positive(self):
         self.assertEqual(self._tx("income", -5).status_code, status.HTTP_400_BAD_REQUEST)

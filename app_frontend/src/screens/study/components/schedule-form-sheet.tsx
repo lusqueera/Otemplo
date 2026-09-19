@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Field, OptionGroup } from '@/components/field';
 import { Sheet, SheetButton } from '@/components/sheet';
-import { maskTime, TIME_RE } from '@/lib/format';
+import { maskTime, TIME_KEYBOARD, TIME_RE } from '@/lib/format';
 import { useCreateBlock, useUpdateBlock } from '@/api/study';
 import type { ScheduleBlock, ScheduleStatus } from '../data';
 
@@ -34,6 +34,7 @@ const EMPTY = {
 export function ScheduleFormSheet({ visible, onClose, date, block, onDelete }: ScheduleFormSheetProps) {
   const createBlock = useCreateBlock();
   const updateBlock = useUpdateBlock();
+  const saving = createBlock.isPending || updateBlock.isPending;
 
   const [form, setForm] = useState(EMPTY);
 
@@ -61,9 +62,8 @@ export function ScheduleFormSheet({ visible, onClose, date, block, onDelete }: S
 
   function handleSave() {
     const input = { ...form, title: form.title.trim(), description: form.description.trim() };
-    if (block) updateBlock.mutate({ id: block.id, ...input });
-    else createBlock.mutate({ ...input, date });
-    onClose();
+    if (block) updateBlock.mutate({ id: block.id, ...input }, { onSuccess: onClose });
+    else createBlock.mutate({ ...input, date }, { onSuccess: onClose });
   }
 
   return (
@@ -73,7 +73,7 @@ export function ScheduleFormSheet({ visible, onClose, date, block, onDelete }: S
       title={block ? 'Editar bloco' : 'Novo bloco de estudo'}
       footer={
         <>
-          <SheetButton label={block ? 'Salvar alterações' : 'Adicionar ao cronograma'} onPress={handleSave} disabled={!canSave} />
+          <SheetButton label={block ? 'Salvar alterações' : 'Adicionar ao cronograma'} onPress={handleSave} disabled={!canSave} loading={saving} />
           {block && onDelete && (
             <SheetButton label="Remover bloco" variant="danger" onPress={() => onDelete(block)} />
           )}
@@ -101,7 +101,7 @@ export function ScheduleFormSheet({ visible, onClose, date, block, onDelete }: S
             placeholder="14:00"
             value={form.start}
             onChangeText={(v) => patch('start', maskTime(v))}
-            keyboardType="number-pad"
+            keyboardType={TIME_KEYBOARD}
             maxLength={5}
           />
         </View>
@@ -111,7 +111,7 @@ export function ScheduleFormSheet({ visible, onClose, date, block, onDelete }: S
             placeholder="15:30"
             value={form.end}
             onChangeText={(v) => patch('end', maskTime(v))}
-            keyboardType="number-pad"
+            keyboardType={TIME_KEYBOARD}
             maxLength={5}
             hint={form.start && form.end && !validTimes ? 'Informe horários válidos (fim após o início).' : undefined}
           />

@@ -34,6 +34,7 @@ const EMPTY = {
 export function TransactionFormSheet({ visible, onClose, transaction, onDelete }: TransactionFormSheetProps) {
   const createTransaction = useCreateTransaction();
   const updateTransaction = useUpdateTransaction();
+  const saving = createTransaction.isPending || updateTransaction.isPending;
 
   const [form, setForm] = useState(EMPTY);
 
@@ -72,9 +73,8 @@ export function TransactionFormSheet({ visible, onClose, transaction, onDelete }
       date,
       icon: form.icon,
     };
-    if (transaction) updateTransaction.mutate({ id: transaction.id, ...input });
-    else createTransaction.mutate(input);
-    onClose();
+    if (transaction) updateTransaction.mutate({ id: transaction.id, ...input }, { onSuccess: onClose });
+    else createTransaction.mutate(input, { onSuccess: onClose });
   }
 
   return (
@@ -84,7 +84,7 @@ export function TransactionFormSheet({ visible, onClose, transaction, onDelete }
       title={transaction ? 'Editar transação' : 'Novo aporte / transação'}
       footer={
         <>
-          <SheetButton label={transaction ? 'Salvar alterações' : 'Registrar'} onPress={handleSave} disabled={!canSave} />
+          <SheetButton label={transaction ? 'Salvar alterações' : 'Registrar'} onPress={handleSave} disabled={!canSave} loading={saving} />
           {transaction && onDelete && (
             <SheetButton label="Excluir transação" variant="danger" onPress={() => onDelete(transaction)} />
           )}

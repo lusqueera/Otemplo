@@ -35,8 +35,7 @@ export function GoalsSheet({ visible, onClose }: GoalsSheetProps) {
   }, [visible, goals]);
 
   function handleSave() {
-    updateProfile.mutate({ goals: form });
-    onClose();
+    updateProfile.mutate({ goals: form }, { onSuccess: onClose });
   }
 
   return (
@@ -45,7 +44,7 @@ export function GoalsSheet({ visible, onClose }: GoalsSheetProps) {
       onClose={onClose}
       title="Metas e foco semanal"
       subtitle="Os quatro pilares que orientam sua semana."
-      footer={<SheetButton label="Salvar metas" onPress={handleSave} />}
+      footer={<SheetButton label="Salvar metas" onPress={handleSave} loading={updateProfile.isPending} />}
     >
       {PILLARS.map((p) => (
         <View key={p.key} style={styles.pillar}>

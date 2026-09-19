@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +16,7 @@ import { dailyStudyGoal, PROFILE_DEFAULTS } from '@/store/profile';
 import { useFinanceSummary } from '@/api/finance';
 import { formatDuration, formatPct, useFinanceStats, useHabitsStats, useNetWorthEvolution, useStudyStats, useTrainingStats } from '@/api/stats';
 import { useHabits, useToggleHabit } from '@/api/habits';
-import { useFlashcards, useLogStudySession, useStudyHours, useSubjects } from '@/api/study';
+import { useFlashcards, useStudyHours, useSubjects } from '@/api/study';
 import { useTrainingWeek, useWorkouts } from '@/api/training';
 import { isDoneOn, weeklyOf } from '@/store/habits';
 import { useStudyStore } from '@/store/study';
@@ -68,7 +67,6 @@ export default function HomeScreen() {
   const studySession = useStudyStore((s) => s.session);
   const { data: subjects = [] } = useSubjects();
   const { data: flashcards = [] } = useFlashcards();
-  const { mutate: logStudySession } = useLogStudySession();
   const { data: studyStats } = useStudyStats();
   const { data: profile } = useProfile();
   const goals = profile?.goals ?? PROFILE_DEFAULTS.goals;
@@ -86,7 +84,6 @@ export default function HomeScreen() {
   const todayWorkoutId = useTrainingStore((s) => s.todayWorkoutId);
   const { data: weekDone = [false, false, false, false, false, false, false] } = useTrainingWeek(week.key);
   const trainingSession = useTrainingStore((s) => s.session);
-  const trainingTick = useTrainingStore((s) => s.tick);
   const { data: trainingStats } = useTrainingStats();
 
   // Finanças
@@ -94,23 +91,8 @@ export default function HomeScreen() {
   const { data: financeStats } = useFinanceStats('month', 0);
   const { data: evolutionPoints = [] } = useNetWorthEvolution(6);
 
-  // Timers continuam correndo enquanto a home está aberta
   const studyRunning = !!studySession?.running;
   const trainingActive = !!trainingSession;
-  useEffect(() => {
-    if (!studyRunning) return;
-    // Um ciclo que fecha sozinho aqui também é registrado no servidor
-    const id = setInterval(() => {
-      const elapsed = useStudyStore.getState().tick();
-      if (elapsed) logStudySession({ seconds: elapsed.seconds, subjectId: elapsed.subjectId });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [studyRunning, logStudySession]);
-  useEffect(() => {
-    if (!trainingActive) return;
-    const id = setInterval(trainingTick, 1000);
-    return () => clearInterval(id);
-  }, [trainingActive, trainingTick]);
 
   // ---- Derivações: estudo
   const hoursToday = hoursByDay[todayIndex] ?? 0;

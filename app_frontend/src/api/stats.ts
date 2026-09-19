@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { stale } from '@/lib/query-client';
 import { api } from '@/lib/api';
 import type { PeriodFilter } from '@/lib/week';
 import { num } from './mappers';
@@ -19,6 +20,7 @@ export type StudyStats = {
 export function useStudyStats() {
   return useQuery({
     queryKey: ['study', 'stats'],
+    staleTime: stale.stats,
     queryFn: async () => {
       const s = await api<Record<keyof StudyStats, string | number | null>>('/api/study/stats/');
       return {
@@ -47,6 +49,7 @@ export type HabitsStats = {
 export function useHabitsStats(days = 30) {
   return useQuery({
     queryKey: ['habits', 'stats', days],
+    staleTime: stale.stats,
     queryFn: () => api<HabitsStats>(`/api/habits/stats/?days=${days}`),
   });
 }
@@ -64,6 +67,7 @@ export type TrainingStats = {
 export function useTrainingStats() {
   return useQuery({
     queryKey: ['training', 'stats'],
+    staleTime: stale.stats,
     queryFn: async () => {
       const s = await api<Record<keyof TrainingStats, string | number>>('/api/training/stats/');
       return {
@@ -85,6 +89,7 @@ export type NetWorthPoint = { month: string; netWorth: number };
 export function useNetWorthEvolution(months = 6) {
   return useQuery({
     queryKey: ['finance', 'evolution', months],
+    staleTime: stale.stats,
     queryFn: async () =>
       (await api<{ month: string; netWorth: string }[]>(`/api/finance/evolution/?months=${months}`)).map((p) => ({
         month: p.month,
@@ -103,6 +108,7 @@ export type FinanceStats = {
 export function useFinanceStats(period: PeriodFilter = 'month', offset = 0) {
   return useQuery({
     queryKey: ['finance', 'stats', period, offset],
+    staleTime: stale.stats,
     queryFn: async () => {
       const s = await api<Record<keyof FinanceStats, string | number | null>>(`/api/finance/stats/?period=${period}&offset=${offset}`);
       return {

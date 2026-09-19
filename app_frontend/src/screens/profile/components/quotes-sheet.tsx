@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { Field } from '@/components/field';
 import { Sheet, SheetButton } from '@/components/sheet';
 import { ToggleRow } from '@/components/toggle-row';
-import { maskTime, TIME_RE } from '@/lib/format';
+import { maskTime, TIME_KEYBOARD, TIME_RE } from '@/lib/format';
 import { useProfile, useUpdateProfile } from '@/api/auth';
 import { CURATOR_LABEL, PROFILE_DEFAULTS, type QuoteCurator } from '@/store/profile';
 import { colors } from '@/theme/colors';
@@ -40,8 +40,7 @@ export function QuotesSheet({ visible, onClose }: QuotesSheetProps) {
   }
 
   function handleSave() {
-    updateProfile.mutate({ quotes: form });
-    onClose();
+    updateProfile.mutate({ quotes: form }, { onSuccess: onClose });
   }
 
   return (
@@ -50,7 +49,7 @@ export function QuotesSheet({ visible, onClose }: QuotesSheetProps) {
       onClose={onClose}
       title="Filosofia e citações diárias"
       subtitle="Curadoria que aparece no rodapé das telas."
-      footer={<SheetButton label="Salvar preferências" onPress={handleSave} disabled={!validTime} />}
+      footer={<SheetButton label="Salvar preferências" onPress={handleSave} disabled={!validTime} loading={updateProfile.isPending} />}
     >
       <ToggleRow
         label="Citação diária"
@@ -87,7 +86,7 @@ export function QuotesSheet({ visible, onClose }: QuotesSheetProps) {
         placeholder="07:00"
         value={form.time}
         onChangeText={(v) => setForm((f) => ({ ...f, time: maskTime(v) }))}
-        keyboardType="number-pad"
+        keyboardType={TIME_KEYBOARD}
         maxLength={5}
         hint={!validTime ? 'Use o formato HH:MM.' : undefined}
       />

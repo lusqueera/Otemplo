@@ -20,19 +20,17 @@ export function SubjectCard({ subject, dueCount, onStart, onMore }: SubjectCardP
   const percent = Math.round(progress * 100);
 
   return (
-    <Pressable style={styles.card} onPress={() => onMore(subject)} accessibilityRole="button">
+    // Sem Pressable no cartão inteiro: na web <button> aninhado engole o clique do "play"
+    <View style={styles.card}>
       <View style={styles.header}>
-        <View style={styles.headerText}>
+        <Pressable style={styles.headerText} onPress={() => onMore(subject)} accessibilityRole="button">
           <View style={styles.tagRow}>
-            <Tag
-              label={PRIORITY_LABEL[subject.priority]}
-              variant={subject.priority === 'high' ? 'filled' : 'default'}
-            />
+            <Tag label={PRIORITY_LABEL[subject.priority]} variant={subject.priority === 'high' ? 'filled' : 'default'} />
             {subject.module ? <Text style={styles.module}>{subject.module}</Text> : null}
           </View>
           <Text style={styles.title}>{subject.title}</Text>
           {subject.description ? <Text style={styles.description}>{subject.description}</Text> : null}
-        </View>
+        </Pressable>
         <Pressable
           style={styles.action}
           onPress={() => onStart(subject)}
@@ -46,16 +44,14 @@ export function SubjectCard({ subject, dueCount, onStart, onMore }: SubjectCardP
 
       <View style={styles.progress}>
         <View style={styles.progressRow}>
-          <Text style={styles.progressLabel}>
-            {dueCount > 0 ? `${dueCount} flashcards para revisar` : 'Progresso da Matéria'}
-          </Text>
+          <Text style={styles.progressLabel}>{dueCount > 0 ? `${dueCount} flashcards para revisar` : 'Progresso da Matéria'}</Text>
           <Text style={styles.progressValue}>
             {percent}% ({subject.hoursDone}h/{subject.hoursGoal}h meta)
           </Text>
         </View>
         <ProgressBar value={progress} />
       </View>
-    </Pressable>
+    </View>
   );
 }
 

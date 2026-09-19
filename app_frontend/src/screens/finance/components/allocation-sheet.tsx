@@ -45,17 +45,16 @@ export function AllocationSheet({ visible, onClose }: AllocationSheetProps) {
   function handleSave() {
     if (mode.kind !== 'form') return;
     const input = { name: form.name.trim(), amount: Math.round(amount * 100) / 100 };
-    if (mode.asset) updateAssetClass.mutate({ id: mode.asset.id, ...input });
-    else createAssetClass.mutate(input);
-    setMode({ kind: 'list' });
+    const backToList = () => setMode({ kind: 'list' });
+    if (mode.asset) updateAssetClass.mutate({ id: mode.asset.id, ...input }, { onSuccess: backToList });
+    else createAssetClass.mutate(input, { onSuccess: backToList });
   }
 
   function handleDelete() {
     if (mode.kind !== 'form' || !mode.asset) return;
     const asset = mode.asset;
     confirmDelete('Excluir classe', `"${asset.name}" será removida da alocação.`, () => {
-      deleteAssetClass.mutate(asset.id);
-      setMode({ kind: 'list' });
+      deleteAssetClass.mutate(asset.id, { onSuccess: () => setMode({ kind: 'list' }) });
     });
   }
 
@@ -67,9 +66,9 @@ export function AllocationSheet({ visible, onClose }: AllocationSheetProps) {
         title={mode.asset ? 'Editar classe' : 'Nova classe de ativo'}
         footer={
           <>
-            <SheetButton label={mode.asset ? 'Salvar alterações' : 'Adicionar classe'} onPress={handleSave} disabled={!canSave} />
+            <SheetButton label={mode.asset ? 'Salvar alterações' : 'Adicionar classe'} onPress={handleSave} disabled={!canSave} loading={createAssetClass.isPending || updateAssetClass.isPending} />
             {mode.asset ? (
-              <SheetButton label="Excluir classe" variant="danger" onPress={handleDelete} />
+              <SheetButton label="Excluir classe" variant="danger" onPress={handleDelete} loading={deleteAssetClass.isPending} />
             ) : (
               <SheetButton label="Voltar" variant="secondary" onPress={() => setMode({ kind: 'list' })} />
             )}

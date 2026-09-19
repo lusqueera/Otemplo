@@ -26,8 +26,7 @@ export function EditProfileSheet({ visible, onClose }: EditProfileSheetProps) {
   const canSave = form.name.trim().length > 0 && validEmail;
 
   function handleSave() {
-    updateMe.mutate({ name: form.name.trim(), title: form.title.trim() });
-    onClose();
+    updateMe.mutate({ name: form.name.trim(), title: form.title.trim() }, { onSuccess: onClose });
   }
 
   return (
@@ -35,7 +34,7 @@ export function EditProfileSheet({ visible, onClose }: EditProfileSheetProps) {
       visible={visible}
       onClose={onClose}
       title="Editar perfil"
-      footer={<SheetButton label="Salvar alterações" onPress={handleSave} disabled={!canSave} />}
+      footer={<SheetButton label="Salvar alterações" onPress={handleSave} disabled={!canSave} loading={updateMe.isPending} />}
     >
       <Field
         label="Nome completo"

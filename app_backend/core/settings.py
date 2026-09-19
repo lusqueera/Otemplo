@@ -187,6 +187,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Com SUPABASE_S3_* no .env os arquivos vão para o Storage do Supabase (API compatível com S3);
 # sem eles, ficam em MEDIA_ROOT (dev local).
 MEDIA_ROOT = BASE_DIR / "media"
+# A foto chega em base64 dentro do JSON (~1,37× o tamanho do arquivo). O padrão do Django (2,5 MB)
+# derrubava fotos de câmera com 400 antes de chegar na view; o nginx limita em 10 MB.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 8 * 1024 * 1024
 SUPABASE_S3_ENDPOINT = os.getenv("SUPABASE_S3_ENDPOINT")  # https://<ref>.storage.supabase.co/storage/v1/s3
 SUPABASE_S3_BUCKET = os.getenv("SUPABASE_S3_BUCKET", "media")
 SUPABASE_PROJECT_URL = os.getenv("SUPABASE_PROJECT_URL", "").rstrip("/")  # https://<ref>.supabase.co

@@ -36,6 +36,7 @@ const EMPTY = {
 export function ExerciseFormSheet({ visible, onClose, workoutId, exercise, onDelete }: ExerciseFormSheetProps) {
   const addExercise = useAddExercise();
   const updateExercise = useUpdateExercise();
+  const saving = addExercise.isPending || updateExercise.isPending;
 
   const [form, setForm] = useState(EMPTY);
 
@@ -74,9 +75,11 @@ export function ExerciseFormSheet({ visible, onClose, workoutId, exercise, onDel
       group: form.group,
       icon: form.icon,
     };
-    if (exercise) updateExercise.mutate(workoutId, exercise.id, input);
-    else addExercise.mutate(workoutId, input);
-    onClose();
+    if (exercise)
+      updateExercise.mutate(workoutId, exercise.id, input, {
+        onSuccess: onClose,
+      });
+    else addExercise.mutate(workoutId, input, { onSuccess: onClose });
   }
 
   return (
@@ -86,10 +89,13 @@ export function ExerciseFormSheet({ visible, onClose, workoutId, exercise, onDel
       title={exercise ? 'Editar exercício' : 'Novo exercício'}
       footer={
         <>
-          <SheetButton label={exercise ? 'Salvar alterações' : 'Adicionar à ficha'} onPress={handleSave} disabled={!canSave} />
-          {exercise && onDelete && (
-            <SheetButton label="Remover da ficha" variant="danger" onPress={() => onDelete(exercise)} />
-          )}
+          <SheetButton
+            label={exercise ? 'Salvar alterações' : 'Adicionar à ficha'}
+            onPress={handleSave}
+            disabled={!canSave}
+            loading={saving}
+          />
+          {exercise && onDelete && <SheetButton label="Remover da ficha" variant="danger" onPress={() => onDelete(exercise)} />}
         </>
       }
     >
@@ -123,12 +129,7 @@ export function ExerciseFormSheet({ visible, onClose, workoutId, exercise, onDel
 
       <OptionGroup label="Grupo" options={GROUP_OPTIONS} value={form.group} onChange={(v) => patch('group', v)} />
 
-      <Field
-        label="Músculo / foco"
-        placeholder="Ex.: Peitoral & Tríceps"
-        value={form.muscle}
-        onChangeText={(v) => patch('muscle', v)}
-      />
+      <Field label="Músculo / foco" placeholder="Ex.: Peitoral & Tríceps" value={form.muscle} onChangeText={(v) => patch('muscle', v)} />
 
       <Stepper label="Séries" value={form.sets} min={1} max={10} onChange={(v) => patch('sets', v)} />
 

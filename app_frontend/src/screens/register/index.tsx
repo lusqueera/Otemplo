@@ -151,10 +151,12 @@ export default function RegisterScreen() {
               icon={({ size }) => (
                 <Feather name="arrow-right" size={size} color={colors.buttonText} />
               )}
+              // Desabilitado continua branco (translúcido) em vez do cinza escuro do Paper
+              theme={{ colors: { surfaceDisabled: 'rgba(255, 255, 255, 0.35)', onSurfaceDisabled: colors.buttonText } }}
               style={styles.button}
               contentStyle={styles.buttonContent}
               labelStyle={styles.buttonLabel}
-              disabled={!canSubmit}
+              disabled={!canSubmit && !register.isPending}
               loading={register.isPending}
               onPress={handleSubmit}
             >

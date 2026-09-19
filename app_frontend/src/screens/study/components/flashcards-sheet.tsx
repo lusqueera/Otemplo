@@ -46,15 +46,14 @@ export function FlashcardsSheet({ visible, onClose }: FlashcardsSheetProps) {
   function handleSave() {
     if (mode.kind !== 'form') return;
     const input = { subjectId: form.subjectId, front: form.front.trim(), back: form.back.trim() };
-    if (mode.card) updateFlashcard.mutate({ id: mode.card.id, ...input });
-    else createFlashcard.mutate(input);
-    setMode({ kind: 'list' });
+    const backToList = () => setMode({ kind: 'list' });
+    if (mode.card) updateFlashcard.mutate({ id: mode.card.id, ...input }, { onSuccess: backToList });
+    else createFlashcard.mutate(input, { onSuccess: backToList });
   }
 
   function handleDelete() {
     if (mode.kind !== 'form' || !mode.card) return;
-    deleteFlashcard.mutate(mode.card.id);
-    setMode({ kind: 'list' });
+    deleteFlashcard.mutate(mode.card.id, { onSuccess: () => setMode({ kind: 'list' }) });
   }
 
   const dueCount = flashcards.filter((c) => c.due).length;
@@ -69,9 +68,9 @@ export function FlashcardsSheet({ visible, onClose }: FlashcardsSheetProps) {
         title={mode.card ? 'Editar flashcard' : 'Novo flashcard'}
         footer={
           <>
-            <SheetButton label={mode.card ? 'Salvar alterações' : 'Adicionar ao banco'} onPress={handleSave} disabled={!canSave} />
+            <SheetButton label={mode.card ? 'Salvar alterações' : 'Adicionar ao banco'} onPress={handleSave} disabled={!canSave} loading={createFlashcard.isPending || updateFlashcard.isPending} />
             {mode.card ? (
-              <SheetButton label="Excluir flashcard" variant="danger" onPress={handleDelete} />
+              <SheetButton label="Excluir flashcard" variant="danger" onPress={handleDelete} loading={deleteFlashcard.isPending} />
             ) : (
               <SheetButton label="Voltar" variant="secondary" onPress={() => setMode({ kind: 'list' })} />
             )}
@@ -117,7 +116,7 @@ export function FlashcardsSheet({ visible, onClose }: FlashcardsSheetProps) {
         <>
           <SheetButton label="Novo flashcard" onPress={() => openForm()} disabled={subjects.length === 0} />
           {dueCount < flashcards.length && (
-            <SheetButton label="Recolocar todos na fila" variant="secondary" onPress={() => resetReviews.mutate()} />
+            <SheetButton label="Recolocar todos na fila" variant="secondary" onPress={() => resetReviews.mutate()} loading={resetReviews.isPending} />
           )}
         </>
       }

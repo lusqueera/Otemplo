@@ -48,14 +48,13 @@ export type Transaction = {
   title: string;
   category: string;
   kind: TransactionKind;
-  /** Valor sempre positivo; `kind === 'income'` é entrada, o resto é saída. */
+  /** Valor sempre positivo; `income` é entrada, `investment` é aporte, o resto é despesa. */
   amount: number;
   /** Data ISO (YYYY-MM-DD). */
   date: string;
   icon: TransactionIcon;
 };
 
-// Seed com datas relativas a hoje, para o mês atual e os anteriores terem movimentação
 export type AssetClass = {
   id: string;
   name: string;

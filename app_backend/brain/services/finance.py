@@ -38,13 +38,17 @@ def summarize(qs: QuerySet) -> dict[str, Decimal]:
     zero = Decimal("0")
     by_kind = {row["kind"]: row["total"] or zero for row in qs.values("kind").annotate(total=Sum("amount"))}
     income = by_kind.get(Transaction.Kind.INCOME, zero)
-    expenses = sum((v for k, v in by_kind.items() if k != Transaction.Kind.INCOME), zero)
+    investment = by_kind.get(Transaction.Kind.INVESTMENT, zero)
+    # Investimento é aporte, não gasto: sai do caixa mas continua no patrimônio.
+    # Despesas = essencial + estilo de vida; saldo = o que sobrou da renda (aportes inclusos).
+    not_expense = (Transaction.Kind.INCOME, Transaction.Kind.INVESTMENT)
+    expenses = sum((v for k, v in by_kind.items() if k not in not_expense), zero)
     return {
         "income": income,
         "expenses": expenses,
         "net": income - expenses,
         "essential": by_kind.get(Transaction.Kind.ESSENTIAL, zero),
-        "investment": by_kind.get(Transaction.Kind.INVESTMENT, zero),
+        "investment": investment,
         "lifestyle": by_kind.get(Transaction.Kind.LIFESTYLE, zero),
     }
 

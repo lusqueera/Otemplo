@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { Field, OptionGroup, Stepper } from '@/components/field';
 import { Sheet, SheetButton } from '@/components/sheet';
-import { maskTime, TIME_RE } from '@/lib/format';
+import { maskTime, TIME_KEYBOARD, TIME_RE } from '@/lib/format';
 import { useCreateWorkout, useUpdateWorkout } from '@/api/training';
 import { useTrainingStore } from '@/store/training';
 import { INTENSITY_LABEL, type Intensity, type Workout } from '../data';
@@ -30,6 +30,7 @@ const EMPTY = {
 export function WorkoutFormSheet({ visible, onClose, workout, onDelete }: WorkoutFormSheetProps) {
   const createWorkout = useCreateWorkout();
   const updateWorkout = useUpdateWorkout();
+  const saving = createWorkout.isPending || updateWorkout.isPending;
 
   const [form, setForm] = useState(EMPTY);
 
@@ -56,11 +57,20 @@ export function WorkoutFormSheet({ visible, onClose, workout, onDelete }: Workou
   const canSave = form.title.trim().length > 0 && validTime;
 
   function handleSave() {
-    const input = { ...form, title: form.title.trim(), description: form.description.trim() };
-    if (workout) updateWorkout.mutate({ id: workout.id, ...input });
+    const input = {
+      ...form,
+      title: form.title.trim(),
+      description: form.description.trim(),
+    };
+    if (workout) updateWorkout.mutate({ id: workout.id, ...input }, { onSuccess: onClose });
     // Treino novo vira o treino de hoje
-    else createWorkout.mutate(input, { onSuccess: (created) => created && useTrainingStore.getState().selectWorkout(created.id) });
-    onClose();
+    else
+      createWorkout.mutate(input, {
+        onSuccess: (created) => {
+          if (created) useTrainingStore.getState().selectWorkout(created.id);
+          onClose();
+        },
+      });
   }
 
   return (
@@ -71,10 +81,8 @@ export function WorkoutFormSheet({ visible, onClose, workout, onDelete }: Workou
       subtitle={workout ? undefined : 'O novo treino passa a ser o treino de hoje.'}
       footer={
         <>
-          <SheetButton label={workout ? 'Salvar alterações' : 'Criar treino'} onPress={handleSave} disabled={!canSave} />
-          {workout && onDelete && (
-            <SheetButton label="Excluir treino" variant="danger" onPress={() => onDelete(workout)} />
-          )}
+          <SheetButton label={workout ? 'Salvar alterações' : 'Criar treino'} onPress={handleSave} disabled={!canSave} loading={saving} />
+          {workout && onDelete && <SheetButton label="Excluir treino" variant="danger" onPress={() => onDelete(workout)} />}
         </>
       }
     >
@@ -97,7 +105,7 @@ export function WorkoutFormSheet({ visible, onClose, workout, onDelete }: Workou
         placeholder="18:30"
         value={form.time}
         onChangeText={(v) => patch('time', maskTime(v))}
-        keyboardType="number-pad"
+        keyboardType={TIME_KEYBOARD}
         maxLength={5}
         hint={!validTime ? 'Use o formato HH:MM.' : undefined}
       />

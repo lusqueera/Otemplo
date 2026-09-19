@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Field, Stepper } from '@/components/field';
 import { Sheet, SheetButton } from '@/components/sheet';
 import { ToggleRow } from '@/components/toggle-row';
-import { maskTime, TIME_RE } from '@/lib/format';
+import { maskTime, TIME_KEYBOARD, TIME_RE } from '@/lib/format';
 import { useProfile, useUpdateProfile } from '@/api/auth';
 import { PROFILE_DEFAULTS } from '@/store/profile';
 
@@ -31,8 +31,7 @@ export function CircadianSheet({ visible, onClose }: CircadianSheetProps) {
   const validTimes = TIME_RE.test(form.wakeTime) && TIME_RE.test(form.bedTime);
 
   function handleSave() {
-    updateProfile.mutate({ circadian: form });
-    onClose();
+    updateProfile.mutate({ circadian: form }, { onSuccess: onClose });
   }
 
   return (
@@ -41,7 +40,7 @@ export function CircadianSheet({ visible, onClose }: CircadianSheetProps) {
       onClose={onClose}
       title="Ritmo circadiano & lembretes"
       subtitle="Alertas sutis de luz e desaceleração."
-      footer={<SheetButton label="Salvar ritmo" onPress={handleSave} disabled={!validTimes} />}
+      footer={<SheetButton label="Salvar ritmo" onPress={handleSave} disabled={!validTimes} loading={updateProfile.isPending} />}
     >
       <View style={styles.times}>
         <View style={styles.time}>
@@ -50,7 +49,7 @@ export function CircadianSheet({ visible, onClose }: CircadianSheetProps) {
             placeholder="06:00"
             value={form.wakeTime}
             onChangeText={(v) => patch('wakeTime', maskTime(v))}
-            keyboardType="number-pad"
+            keyboardType={TIME_KEYBOARD}
             maxLength={5}
           />
         </View>
@@ -60,7 +59,7 @@ export function CircadianSheet({ visible, onClose }: CircadianSheetProps) {
             placeholder="22:30"
             value={form.bedTime}
             onChangeText={(v) => patch('bedTime', maskTime(v))}
-            keyboardType="number-pad"
+            keyboardType={TIME_KEYBOARD}
             maxLength={5}
             hint={!validTimes ? 'Use o formato HH:MM.' : undefined}
           />

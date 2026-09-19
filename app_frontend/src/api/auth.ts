@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api, session } from '@/lib/api';
+import { errorMessage, notify } from '@/lib/notify';
+import { resetCache, stale } from '@/lib/query-client';
 import { useAuthStore, type User } from '@/store/auth';
 import type { CircadianPreferences, QuotePreferences, WeeklyGoals } from '@/store/profile';
+import { invalidate } from './invalidate';
 import { keys } from './keys';
 import { compact, dec, hhmm, num } from './mappers';
 
@@ -20,41 +23,44 @@ const toUser = (u: ApiUser): User => ({
 
 type TokenResponse = { user: ApiUser; access: string; refresh: string };
 
-async function acceptSession(data: TokenResponse) {
-  await session.set({ access: data.access, refresh: data.refresh });
-  const user = toUser(data.user);
+/**
+ * Entra com a sessão nova. O cache é zerado ANTES de marcar o usuário: com `setUser` a Home
+ * monta e dispara as queries; um `clear()` depois disso apagaria os resultados debaixo dos
+ * observers e o dashboard ficaria zerado até o próximo refetch.
+ */
+async function acceptSession(user: User, tokens: { access: string; refresh: string }) {
+  await session.set(tokens);
+  await resetCache();
   useAuthStore.getState().setUser(user);
   return user;
 }
 
 export function useLogin() {
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { email: string; password: string }) => {
       // SimpleJWT devolve só os tokens; o usuário vem de /me
       const pair = await api<{ access: string; refresh: string }>('/api/auth/token/', { method: 'POST', body: input, auth: false });
       await session.set(pair);
       const me = await api<ApiUser>('/api/auth/me/');
-      const user = toUser(me);
-      useAuthStore.getState().setUser(user);
-      return user;
+      return acceptSession(toUser(me), pair);
     },
-    onSuccess: () => qc.clear(),
+    meta: { silent: true },
   });
 }
 
 export function useRegister() {
-  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { email: string; password: string; name: string; title?: string }) =>
-      acceptSession(await api<TokenResponse>('/api/auth/register/', { method: 'POST', body: input, auth: false })),
-    onSuccess: () => qc.clear(),
+    mutationFn: async (input: { email: string; password: string; name: string; title?: string }) => {
+      const data = await api<TokenResponse>('/api/auth/register/', { method: 'POST', body: input, auth: false });
+      return acceptSession(toUser(data.user), { access: data.access, refresh: data.refresh });
+    },
+    meta: { silent: true },
   });
 }
 
 export function useLogout() {
-  const qc = useQueryClient();
   return useMutation({
+    onMutate: () => useAuthStore.getState().markSigningOut(),
     mutationFn: async () => {
       const refresh = session.tokens?.refresh;
       // Melhor esforço: invalida o refresh no servidor, mas a sessão local sempre é encerrada
@@ -62,13 +68,14 @@ export function useLogout() {
       await session.clear();
       useAuthStore.getState().setUser(null);
     },
-    onSettled: () => qc.clear(),
+    onSettled: () => resetCache(),
   });
 }
 
 export function useMe(enabled = true) {
   return useQuery({
     queryKey: keys.me,
+    staleTime: stale.catalog,
     queryFn: async () => {
       const user = toUser(await api<ApiUser>('/api/auth/me/'));
       useAuthStore.getState().setUser(user);
@@ -104,7 +111,7 @@ export function useUploadAvatar() {
     mutationFn: async (image: string) => (await api<{ avatar: string }>('/api/auth/me/avatar/', { method: 'PUT', body: { image } })).avatar,
     onSuccess: (avatar) => {
       useAuthStore.getState().updateUser({ avatarUri: avatar });
-      qc.invalidateQueries({ queryKey: keys.me });
+      invalidate(qc, 'me');
     },
   });
 }
@@ -115,21 +122,26 @@ export function useRemoveAvatar() {
     mutationFn: () => api<void>('/api/auth/me/avatar/', { method: 'DELETE' }),
     onSuccess: () => {
       useAuthStore.getState().updateUser({ avatarUri: undefined });
-      qc.invalidateQueries({ queryKey: keys.me });
+      invalidate(qc, 'me');
     },
   });
 }
 
 /** Exclusão de conta: apaga o usuário e todos os dados no servidor. */
 export function useDeleteAccount() {
-  const qc = useQueryClient();
   return useMutation({
+    onMutate: () => useAuthStore.getState().markSigningOut(),
     mutationFn: async () => {
       await api<void>('/api/auth/me/', { method: 'DELETE' });
       await session.clear();
       useAuthStore.getState().setUser(null);
     },
-    onSettled: () => qc.clear(),
+    // Falhou (sem rede, etc.): a sessão continua válida, volta para a tela
+    onError: (error) => {
+      useAuthStore.getState().setUser(useAuthStore.getState().user);
+      notify('Não foi possível excluir a conta', errorMessage(error));
+    },
+    onSettled: () => resetCache(),
   });
 }
 
@@ -200,6 +212,7 @@ const fromProfilePatch = ({ goals = {}, quotes = {}, circadian = {} }: ProfilePa
 export function useProfile() {
   return useQuery({
     queryKey: keys.profile,
+    staleTime: stale.catalog,
     queryFn: async () => toProfile(await api<ApiProfile>('/api/auth/me/profile/')),
   });
 }
@@ -209,6 +222,10 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: async (patch: ProfilePatch) =>
       toProfile(await api<ApiProfile>('/api/auth/me/profile/', { method: 'PATCH', body: fromProfilePatch(patch) })),
-    onSuccess: (profile) => qc.setQueryData(keys.profile, profile),
+    onSuccess: (profile) => {
+      qc.setQueryData(keys.profile, profile);
+      // Metas alimentam os KPIs de todos os domínios
+      invalidate(qc, 'profile');
+    },
   });
 }

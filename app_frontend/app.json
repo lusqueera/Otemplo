@@ -20,7 +20,10 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ateliernoir.app"
+      "package": "com.ateliernoir.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -49,11 +52,18 @@
           "backgroundColor": "#131313"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "backgroundColor": "#131313"
+    "backgroundColor": "#131313",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "add89ad5-be77-471a-9c23-a29a692c8afb"
+      }
+    }
   }
 }

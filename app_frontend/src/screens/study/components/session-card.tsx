@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import Svg, { Circle } from 'react-native-svg';
@@ -41,12 +41,6 @@ export function SessionCard({ onStart }: SessionCardProps) {
   const skipCycle = () => log(useStudyStore.getState().skipCycle());
 
   const running = session?.running ?? false;
-
-  useEffect(() => {
-    if (!running) return;
-    const id = setInterval(() => log(useStudyStore.getState().tick()), 1000);
-    return () => clearInterval(id);
-  }, [running, log]);
 
   if (!session || !subject) {
     return (

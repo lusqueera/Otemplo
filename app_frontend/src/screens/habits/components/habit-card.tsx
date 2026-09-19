@@ -27,43 +27,47 @@ export function HabitCard({ habit, weekly, done, onToggle, onIncrement, onPress 
   const inProgress = qty && !done && qty.current > 0;
 
   return (
-    <Pressable style={styles.card} onPress={() => onPress(habit)} accessibilityRole="button">
+    // O cartão não é um Pressable: na web, <button> dentro de <button> é inválido e o clique
+    // em "+ 250 ml" era entregue ao cartão. Só a área de texto abre as ações.
+    <View style={styles.card}>
       <View style={styles.main}>
-        <View style={styles.icon}>
-          <MaterialCommunityIcons name={habit.icon} size={20} color={colors.text} />
-        </View>
-
-        <View style={styles.text}>
-          <View style={styles.metaRow}>
-            <Text style={styles.category}>{habit.category}</Text>
-            {inProgress ? (
-              <View style={styles.status}>
-                <Text style={styles.statusText}>Em andamento</Text>
-              </View>
-            ) : habit.streak > 0 ? (
-              <View style={styles.streak}>
-                <MaterialCommunityIcons name="fire" size={12} color={colors.text} />
-                <Text style={styles.streakText}>{habit.streak}d</Text>
-              </View>
-            ) : habit.scheduledAt ? (
-              <View style={styles.status}>
-                <Text style={styles.statusText}>Agendado {habit.scheduledAt}</Text>
-              </View>
-            ) : (
-              <View style={styles.status}>
-                <Text style={styles.statusText}>{done ? 'Concluído' : 'Pendente'}</Text>
-              </View>
-            )}
+        <Pressable style={styles.body} onPress={() => onPress(habit)} accessibilityRole="button">
+          <View style={styles.icon}>
+            <MaterialCommunityIcons name={habit.icon} size={20} color={colors.text} />
           </View>
-          <Text style={styles.title} numberOfLines={1}>
-            {habit.title}
-          </Text>
-          <Text style={styles.goal}>
-            {qty
-              ? `${formatQty(qty.current, qty.unit)} de ${formatQty(qty.target, qty.unit)} (${Math.round(qtyProgress * 100)}%)`
-              : habit.goal}
-          </Text>
-        </View>
+
+          <View style={styles.text}>
+            <View style={styles.metaRow}>
+              <Text style={styles.category}>{habit.category}</Text>
+              {inProgress ? (
+                <View style={styles.status}>
+                  <Text style={styles.statusText}>Em andamento</Text>
+                </View>
+              ) : habit.streak > 0 ? (
+                <View style={styles.streak}>
+                  <MaterialCommunityIcons name="fire" size={12} color={colors.text} />
+                  <Text style={styles.streakText}>{habit.streak}d</Text>
+                </View>
+              ) : habit.scheduledAt ? (
+                <View style={styles.status}>
+                  <Text style={styles.statusText}>Agendado {habit.scheduledAt}</Text>
+                </View>
+              ) : (
+                <View style={styles.status}>
+                  <Text style={styles.statusText}>{done ? 'Concluído' : 'Pendente'}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.title} numberOfLines={1}>
+              {habit.title}
+            </Text>
+            <Text style={styles.goal}>
+              {qty
+                ? `${formatQty(qty.current, qty.unit)} de ${formatQty(qty.target, qty.unit)} (${Math.round(qtyProgress * 100)}%)`
+                : habit.goal}
+            </Text>
+          </View>
+        </Pressable>
 
         <View style={styles.actions}>
           {qty && !done && (
@@ -84,11 +88,7 @@ export function HabitCard({ habit, weekly, done, onToggle, onIncrement, onPress 
             accessibilityRole="checkbox"
             accessibilityState={{ checked: done }}
           >
-            {done ? (
-              <Feather name="check" size={16} color={colors.buttonText} />
-            ) : (
-              <View style={styles.checkEmpty} />
-            )}
+            {done ? <Feather name="check" size={16} color={colors.buttonText} /> : <View style={styles.checkEmpty} />}
           </Pressable>
         </View>
       </View>
@@ -107,7 +107,7 @@ export function HabitCard({ habit, weekly, done, onToggle, onIncrement, onPress 
           </View>
         </View>
       )}
-    </Pressable>
+    </View>
   );
 }
 
@@ -119,6 +119,12 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   main: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  body: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,

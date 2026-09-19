@@ -16,37 +16,37 @@ function formatDelta(delta: number) {
 }
 
 export function ExerciseRow({ exercise, onToggle, onPress }: ExerciseRowProps) {
-  const detail = [
-    `${exercise.sets}× ${exercise.reps}`,
-    exercise.load > 0 ? `Carga atual: ${exercise.load} kg` : null,
-  ]
+  const detail = [`${exercise.sets}× ${exercise.reps}`, exercise.load > 0 ? `Carga atual: ${exercise.load} kg` : null]
     .filter(Boolean)
     .join(' • ');
 
   return (
-    <Pressable style={styles.row} onPress={() => onPress(exercise)} accessibilityRole="button">
-      <View style={styles.icon}>
-        <MaterialCommunityIcons name={exercise.icon} size={20} color={colors.text} />
-      </View>
-
-      <View style={styles.text}>
-        <View style={styles.nameRow}>
-          <Text style={[styles.name, exercise.done && styles.nameDone]} numberOfLines={1}>
-            {exercise.name}
-          </Text>
-          {exercise.delta != null && exercise.delta !== 0 && (
-            <View style={styles.delta}>
-              <Text style={styles.deltaText}>{formatDelta(exercise.delta)}</Text>
-            </View>
-          )}
+    // Linha em View: na web um botão dentro de outro botão faz o check cair no onPress da linha
+    <View style={styles.row}>
+      <Pressable style={styles.body} onPress={() => onPress(exercise)} accessibilityRole="button">
+        <View style={styles.icon}>
+          <MaterialCommunityIcons name={exercise.icon} size={20} color={colors.text} />
         </View>
-        <Text style={styles.detail}>{detail}</Text>
-        {exercise.muscle ? (
-          <View style={styles.muscle}>
-            <Text style={styles.muscleText}>{exercise.muscle}</Text>
+
+        <View style={styles.text}>
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, exercise.done && styles.nameDone]} numberOfLines={1}>
+              {exercise.name}
+            </Text>
+            {exercise.delta != null && exercise.delta !== 0 && (
+              <View style={styles.delta}>
+                <Text style={styles.deltaText}>{formatDelta(exercise.delta)}</Text>
+              </View>
+            )}
           </View>
-        ) : null}
-      </View>
+          <Text style={styles.detail}>{detail}</Text>
+          {exercise.muscle ? (
+            <View style={styles.muscle}>
+              <Text style={styles.muscleText}>{exercise.muscle}</Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
 
       <Pressable
         style={[styles.check, exercise.done && styles.checkDone]}
@@ -57,11 +57,17 @@ export function ExerciseRow({ exercise, onToggle, onPress }: ExerciseRowProps) {
       >
         <Feather name="check" size={16} color={exercise.done ? colors.buttonText : colors.muted} />
       </Pressable>
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  body: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

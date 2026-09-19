@@ -14,7 +14,8 @@ type TransactionRowProps = {
 };
 
 export function TransactionRow({ transaction, onPress, onCard }: TransactionRowProps) {
-  const isIncome = transaction.kind === 'income';
+  // Investimento é aporte (fica no patrimônio), então aparece como entrada, não como gasto
+  const isIncome = transaction.kind === 'income' || transaction.kind === 'investment';
   return (
     <Pressable
       style={[styles.row, onCard && styles.rowOnCard]}

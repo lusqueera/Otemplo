@@ -1,3 +1,5 @@
+import { Platform, type KeyboardTypeOptions } from 'react-native';
+
 /** Formata em reais: 14850 → "R$ 14.850,00"; `compact` omite os centavos. */
 export function formatBRL(value: number, { compact = false, sign = false } = {}) {
   const abs = Math.abs(value);
@@ -72,3 +74,18 @@ export function maskTime(value: string) {
 }
 
 export const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Aceita "7:30", "07:30", "730" e "0730" → "07:30"; vazio → ''; inválido → null. */
+export function normalizeTime(value: string): string | null {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  const padded = digits.length <= 2 ? `${digits.padStart(2, '0')}00` : digits.padStart(4, '0');
+  const hhmm = `${padded.slice(0, 2)}:${padded.slice(2, 4)}`;
+  return TIME_RE.test(hhmm) ? hhmm : null;
+}
+
+/**
+ * Teclado para campos HH:MM. No Android, `number-pad` usa um input numérico que
+ * descarta o ":" inserido pela máscara — o valor exibido ficava sem separador.
+ */
+export const TIME_KEYBOARD: KeyboardTypeOptions = Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default';

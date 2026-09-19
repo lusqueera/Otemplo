@@ -21,6 +21,7 @@ import { useDeleteWorkout, useRemoveExercise, useToggleExercise, useTonnage, use
 import { estimateVolumeKg, useTrainingStore } from '@/store/training';
 import { colors } from '@/theme/colors';
 import { ExerciseFormSheet } from './components/exercise-form-sheet';
+import { ExerciseLibrary } from './components/exercise-library';
 import { ExerciseRow } from './components/exercise-row';
 import { WorkoutCard } from './components/workout-card';
 import { WorkoutFormSheet } from './components/workout-form-sheet';
@@ -31,6 +32,13 @@ import { GROUP_LABEL, quote, type Exercise, type ExerciseGroup, type Workout } f
 const SCREEN_PADDING = 20;
 
 type Filter = 'all' | ExerciseGroup;
+
+/** Aba superior: fichas do usuário ou biblioteca pública de exercícios. */
+type Tab = 'mine' | 'library';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'mine', label: 'Meus treinos' },
+  { id: 'library', label: 'Biblioteca' },
+];
 
 type SheetState =
   | { kind: 'none' }
@@ -78,6 +86,7 @@ export default function TrainingScreen() {
   }, [tonnagePoints]);
   const exercises = workout?.exercises ?? [];
 
+  const [tab, setTab] = useState<Tab>('mine');
   const [filter, setFilter] = useState<Filter>('all');
   const [sheet, setSheet] = useState<SheetState>({ kind: 'none' });
   const close = () => setSheet({ kind: 'none' });
@@ -116,15 +125,46 @@ export default function TrainingScreen() {
 
   const workoutActions: Action[] = workout
     ? [
-        { id: 'edit', label: 'Editar treino', icon: 'edit-2', onPress: () => setSheet({ kind: 'workout-form', workout }) },
-        { id: 'add', label: 'Adicionar exercício', icon: 'plus', onPress: () => setSheet({ kind: 'exercise-form' }) },
+        {
+          id: 'edit',
+          label: 'Editar treino',
+          icon: 'edit-2',
+          onPress: () => setSheet({ kind: 'workout-form', workout }),
+        },
+        {
+          id: 'add',
+          label: 'Adicionar exercício',
+          icon: 'plus',
+          onPress: () => setSheet({ kind: 'exercise-form' }),
+        },
         ...(workouts.length > 1
-          ? [{ id: 'switch', label: 'Trocar treino de hoje', icon: 'repeat' as const, onPress: () => setSheet({ kind: 'workout-picker' }) }]
+          ? [
+              {
+                id: 'switch',
+                label: 'Trocar treino de hoje',
+                icon: 'repeat' as const,
+                onPress: () => setSheet({ kind: 'workout-picker' }),
+              },
+            ]
           : []),
         ...(session
-          ? [{ id: 'cancel', label: 'Cancelar sessão em andamento', icon: 'x-circle' as const, destructive: true, onPress: cancelSession }]
+          ? [
+              {
+                id: 'cancel',
+                label: 'Cancelar sessão em andamento',
+                icon: 'x-circle' as const,
+                destructive: true,
+                onPress: cancelSession,
+              },
+            ]
           : []),
-        { id: 'delete', label: 'Excluir treino', icon: 'trash-2', destructive: true, onPress: () => handleDeleteWorkout(workout) },
+        {
+          id: 'delete',
+          label: 'Excluir treino',
+          icon: 'trash-2',
+          destructive: true,
+          onPress: () => handleDeleteWorkout(workout),
+        },
       ]
     : [];
 
@@ -144,8 +184,19 @@ export default function TrainingScreen() {
             icon: sheet.exercise.done ? 'rotate-ccw' : 'check',
             onPress: () => workout && toggleExercise(workout.id, sheet.exercise.id),
           },
-          { id: 'edit', label: 'Editar exercício', icon: 'edit-2', onPress: () => setSheet({ kind: 'exercise-form', exercise: sheet.exercise }) },
-          { id: 'delete', label: 'Remover da ficha', icon: 'trash-2', destructive: true, onPress: () => handleDeleteExercise(sheet.exercise) },
+          {
+            id: 'edit',
+            label: 'Editar exercício',
+            icon: 'edit-2',
+            onPress: () => setSheet({ kind: 'exercise-form', exercise: sheet.exercise }),
+          },
+          {
+            id: 'delete',
+            label: 'Remover da ficha',
+            icon: 'trash-2',
+            destructive: true,
+            onPress: () => handleDeleteExercise(sheet.exercise),
+          },
         ]
       : [];
 
@@ -156,145 +207,167 @@ export default function TrainingScreen() {
         <ScreenHeader
           title="Treino & Físico"
           subtitle="Arquitetura corporal, hipertrofia progressiva e disciplina motora."
-          action={{ label: 'Novo Treino', onPress: () => setSheet({ kind: 'workout-form' }) }}
+          action={
+            tab === 'mine'
+              ? {
+                  label: 'Novo Treino',
+                  onPress: () => setSheet({ kind: 'workout-form' }),
+                }
+              : undefined
+          }
           actionPlacement="right"
         />
 
-        <WeekStrip
-          title={
-            <View style={styles.weekTitle}>
-              <Feather name="calendar" size={14} color={colors.muted} />
-              <Text style={styles.weekTitleText}>
-                Semana {week.number} • {week.monthName}
-              </Text>
-            </View>
-          }
-          range={week.rangeLabel}
-          days={days}
-          selectedIndex={selectedDay}
-          onSelect={selectDay}
-          onPrev={() => shiftWeek(-1)}
-          onNext={() => shiftWeek(1)}
-        />
-
-        {/* KPIs */}
-        <View style={styles.grid}>
-          <View style={styles.gridRow}>
-            <KpiTile
-              label="Frequência"
-              badge={isCurrentWeek ? `${daysDone}/${weeklyGoal} meta` : `Semana ${week.number}`}
-              value={`${daysDone} / ${weeklyGoal}`}
-              unit="dias"
-              progress={daysDone / weeklyGoal}
-              hint={daysDone >= weeklyGoal ? 'Meta batida' : daysDone >= 3 ? 'Consistência alta' : 'Ritmo abaixo da meta'}
-            />
-            <KpiTile
-              label="Volume previsto"
-              badge={`${(stats?.volumeChangeKg ?? 0) >= 0 ? '+' : ''}${Math.round(stats?.volumeChangeKg ?? 0).toLocaleString('pt-BR')} kg`}
-              value={volume.toLocaleString('pt-BR')}
-              unit="kg"
-              hint="Sobrecarga contínua"
-              hintIcon={<Feather name="trending-up" size={12} color={colors.muted} />}
-            />
-          </View>
-          <View style={styles.gridRow}>
-            <KpiTile
-              label="Tempo ativo"
-              icon={<MaterialCommunityIcons name="timer-outline" size={16} color={colors.muted} />}
-              value={formatDuration(stats?.weekActiveSeconds ?? 0)}
-              progress={activeProgress}
-              hint={`Meta: ${formatDuration(stats?.goalActiveSeconds ?? 0)} na semana`}
-            />
-            <KpiTile
-              label="Sessões na semana"
-              icon={<Feather name="heart" size={16} color={colors.muted} />}
-              value={String(stats?.weekSessions ?? 0)}
-              unit={`/${weeklyGoal}`}
-              hint={stats?.weekSessions ? `Média ${formatDuration(stats.avgSessionSeconds)} / sessão` : 'Nenhuma sessão registrada'}
-              hintIcon={<MaterialCommunityIcons name="fire" size={12} color={colors.muted} />}
-            />
-          </View>
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {TABS.map((t) => {
+            const on = t.id === tab;
+            return (
+              <Pressable
+                key={t.id}
+                style={[styles.tab, on && styles.tabOn]}
+                onPress={() => setTab(t.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+              >
+                <Text style={[styles.tabText, on && styles.tabTextOn]}>{t.label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <WorkoutCard
-          workout={workout}
-          onMore={() => setSheet({ kind: 'workout-actions' })}
-          onCreate={() => setSheet({ kind: 'workout-form' })}
-        />
-
-        {workout && (
+        {tab === 'library' ? (
+          <ExerciseLibrary inset={SCREEN_PADDING} onWorkoutCreated={() => setTab('mine')} />
+        ) : (
           <>
-            <ChipRow
-              chips={chips}
-              selectedId={filter}
-              onSelect={(id) => setFilter(id as Filter)}
-              inset={SCREEN_PADDING}
+            <WeekStrip
+              title={
+                <View style={styles.weekTitle}>
+                  <Feather name="calendar" size={14} color={colors.muted} />
+                  <Text style={styles.weekTitleText}>
+                    Semana {week.number} • {week.monthName}
+                  </Text>
+                </View>
+              }
+              range={week.rangeLabel}
+              days={days}
+              selectedIndex={selectedDay}
+              onSelect={selectDay}
+              onPrev={() => shiftWeek(-1)}
+              onNext={() => shiftWeek(1)}
             />
 
-            {/* Ficha */}
-            <View style={styles.section}>
-              <SectionHeader
-                title="Ficha de treino • Sobrecarga progressiva"
-                right={
-                  <Pressable style={styles.link} onPress={() => setSheet({ kind: 'exercise-form' })} accessibilityRole="button">
-                    <Feather name="plus" size={14} color={colors.text} />
-                    <Text style={styles.linkText}>
-                      {exercises.length} {exercises.length === 1 ? 'item' : 'itens'}
-                    </Text>
-                  </Pressable>
-                }
-              />
-              {visible.length === 0 ? (
-                <Pressable style={styles.emptyCard} onPress={() => setSheet({ kind: 'exercise-form' })}>
-                  <Text style={styles.emptyTitle}>
-                    {exercises.length === 0 ? 'Ficha vazia' : 'Nenhum exercício neste grupo'}
-                  </Text>
-                  <Text style={styles.emptyText}>Toque para adicionar um exercício.</Text>
-                </Pressable>
-              ) : (
-                visible.map((exercise) => (
-                  <ExerciseRow
-                    key={exercise.id}
-                    exercise={exercise}
-                    onToggle={(e) => toggleExercise(workout.id, e.id)}
-                    onPress={(e) => setSheet({ kind: 'exercise-actions', exercise: e })}
-                  />
-                ))
-              )}
+            {/* KPIs */}
+            <View style={styles.grid}>
+              <View style={styles.gridRow}>
+                <KpiTile
+                  label="Frequência"
+                  badge={isCurrentWeek ? `${daysDone}/${weeklyGoal} meta` : `Semana ${week.number}`}
+                  value={`${daysDone} / ${weeklyGoal}`}
+                  unit="dias"
+                  progress={daysDone / weeklyGoal}
+                  hint={daysDone >= weeklyGoal ? 'Meta batida' : daysDone >= 3 ? 'Consistência alta' : 'Ritmo abaixo da meta'}
+                />
+                <KpiTile
+                  label="Volume previsto"
+                  badge={`${(stats?.volumeChangeKg ?? 0) >= 0 ? '+' : ''}${Math.round(stats?.volumeChangeKg ?? 0).toLocaleString('pt-BR')} kg`}
+                  value={volume.toLocaleString('pt-BR')}
+                  unit="kg"
+                  hint="Sobrecarga contínua"
+                  hintIcon={<Feather name="trending-up" size={12} color={colors.muted} />}
+                />
+              </View>
+              <View style={styles.gridRow}>
+                <KpiTile
+                  label="Tempo ativo"
+                  icon={<MaterialCommunityIcons name="timer-outline" size={16} color={colors.muted} />}
+                  value={formatDuration(stats?.weekActiveSeconds ?? 0)}
+                  progress={activeProgress}
+                  hint={`Meta: ${formatDuration(stats?.goalActiveSeconds ?? 0)} na semana`}
+                />
+                <KpiTile
+                  label="Sessões na semana"
+                  icon={<Feather name="heart" size={16} color={colors.muted} />}
+                  value={String(stats?.weekSessions ?? 0)}
+                  unit={`/${weeklyGoal}`}
+                  hint={stats?.weekSessions ? `Média ${formatDuration(stats.avgSessionSeconds)} / sessão` : 'Nenhuma sessão registrada'}
+                  hintIcon={<MaterialCommunityIcons name="fire" size={12} color={colors.muted} />}
+                />
+              </View>
             </View>
+
+            <WorkoutCard
+              workout={workout}
+              onMore={() => setSheet({ kind: 'workout-actions' })}
+              onCreate={() => setSheet({ kind: 'workout-form' })}
+            />
+
+            {workout && (
+              <>
+                <ChipRow chips={chips} selectedId={filter} onSelect={(id) => setFilter(id as Filter)} inset={SCREEN_PADDING} />
+
+                {/* Ficha */}
+                <View style={styles.section}>
+                  <SectionHeader
+                    title="Ficha de treino • Sobrecarga progressiva"
+                    right={
+                      <Pressable style={styles.link} onPress={() => setSheet({ kind: 'exercise-form' })} accessibilityRole="button">
+                        <Feather name="plus" size={14} color={colors.text} />
+                        <Text style={styles.linkText}>
+                          {exercises.length} {exercises.length === 1 ? 'item' : 'itens'}
+                        </Text>
+                      </Pressable>
+                    }
+                  />
+                  {visible.length === 0 ? (
+                    <Pressable style={styles.emptyCard} onPress={() => setSheet({ kind: 'exercise-form' })}>
+                      <Text style={styles.emptyTitle}>{exercises.length === 0 ? 'Ficha vazia' : 'Nenhum exercício neste grupo'}</Text>
+                      <Text style={styles.emptyText}>Toque para adicionar um exercício.</Text>
+                    </Pressable>
+                  ) : (
+                    visible.map((exercise) => (
+                      <ExerciseRow
+                        key={exercise.id}
+                        exercise={exercise}
+                        onToggle={(e) => toggleExercise(workout.id, e.id)}
+                        onPress={(e) => setSheet({ kind: 'exercise-actions', exercise: e })}
+                      />
+                    ))
+                  )}
+                </View>
+              </>
+            )}
+
+            {/* Tonelagem */}
+            <Card
+              overline="Histórico de tonelagem"
+              title="Curva de Sobrecarga (6 Semanas)"
+              action={<Badge icon={<Feather name="arrow-up-right" size={14} color={colors.text} />} label={tonnage.change} />}
+            >
+              <LineChart
+                data={tonnage.values}
+                labels={tonnage.labels}
+                curve="linear"
+                markers={tonnage.values.map((_, i) => i)}
+                highlightIndex={tonnage.values.length - 1}
+                highlightLine={false}
+                height={110}
+              />
+            </Card>
+
+            <QuoteCard text={quote.text} author={quote.author} variant="plain" />
           </>
         )}
-
-        {/* Tonelagem */}
-        <Card
-          overline="Histórico de tonelagem"
-          title="Curva de Sobrecarga (6 Semanas)"
-          action={
-            <Badge
-              icon={<Feather name="arrow-up-right" size={14} color={colors.text} />}
-              label={tonnage.change}
-            />
-          }
-        >
-          <LineChart
-            data={tonnage.values}
-            labels={tonnage.labels}
-            curve="linear"
-            markers={tonnage.values.map((_, i) => i)}
-            highlightIndex={tonnage.values.length - 1}
-            highlightLine={false}
-            height={110}
-          />
-        </Card>
-
-        <QuoteCard text={quote.text} author={quote.author} variant="plain" />
       </ScrollView>
 
       <ActionSheet
         visible={sheet.kind === 'workout-actions'}
         onClose={close}
         title={workout?.title ?? ''}
-        subtitle={workout ? `${isCurrentWeek && selectedDay === week.todayIndex ? 'Hoje' : `${week.days[selectedDay].label} ${week.days[selectedDay].day}`} • ${workout.time}` : undefined}
+        subtitle={
+          workout
+            ? `${isCurrentWeek && selectedDay === week.todayIndex ? 'Hoje' : `${week.days[selectedDay].label} ${week.days[selectedDay].day}`} • ${workout.time}`
+            : undefined
+        }
         actions={workoutActions}
       />
       <ActionSheet
@@ -340,6 +413,32 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 32,
     gap: 20,
+  },
+  tabs: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 4,
+    gap: 4,
+  },
+  tab: {
+    flex: 1,
+    height: 40,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabOn: {
+    backgroundColor: colors.text,
+  },
+  tabText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tabTextOn: {
+    color: colors.buttonText,
+    fontWeight: '600',
   },
   weekTitle: {
     flexDirection: 'row',

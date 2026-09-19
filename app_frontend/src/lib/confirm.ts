@@ -1,13 +1,8 @@
-import { Alert, Platform } from 'react-native';
+import { dialog } from '@/components/dialog';
 
-/** Confirmação de ação destrutiva que funciona no nativo (Alert) e na web (confirm). */
+/** Confirmação de ação destrutiva no modal do app (igual no nativo e na web). */
 export function confirmDelete(title: string, message: string, onConfirm: () => void) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${message}`)) onConfirm();
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Excluir', style: 'destructive', onPress: onConfirm },
-  ]);
+  void dialog.confirm(title, message, { confirmLabel: 'Excluir', destructive: true }).then((ok) => {
+    if (ok) onConfirm();
+  });
 }

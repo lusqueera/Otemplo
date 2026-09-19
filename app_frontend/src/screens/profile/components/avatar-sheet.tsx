@@ -1,8 +1,10 @@
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
 import { ActionSheet, type Action } from '@/components/action-sheet';
 import { useRemoveAvatar, useUploadAvatar } from '@/api/auth';
+import { errorMessage, notify } from '@/lib/notify';
 import { useAuthStore } from '@/store/auth';
 
 type AvatarSheetProps = {
@@ -14,14 +16,11 @@ const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
   allowsEditing: true,
   aspect: [1, 1],
-  quality: 0.8,
-  base64: true,
+  quality: 1,
 };
 
-function notify(title: string, message: string) {
-  if (Platform.OS === 'web') window.alert(`${title}\n\n${message}`);
-  else Alert.alert(title, message);
-}
+/** Lado máximo da foto enviada: o avatar é exibido em até 80 px, 512 sobra e cabe no limite da API. */
+const AVATAR_SIZE = 512;
 
 /** Opções para trocar a foto de perfil: câmera, galeria ou remover. */
 export function AvatarSheet({ visible, onClose }: AvatarSheetProps) {
@@ -29,15 +28,21 @@ export function AvatarSheet({ visible, onClose }: AvatarSheetProps) {
   const upload = useUploadAvatar();
   const remove = useRemoveAvatar();
 
-  // O picker devolve base64; o servidor grava o arquivo e responde com a URL
-  function send(asset: ImagePicker.ImagePickerAsset) {
-    if (!asset.base64) {
-      notify('Foto não carregada', 'Não foi possível ler a imagem selecionada.');
-      return;
+  // Foto de câmera recortada ainda tem ~3000 px; reduz antes de virar base64 (limite de 5 MB na API)
+  async function send(asset: ImagePicker.ImagePickerAsset) {
+    try {
+      const image = await ImageManipulator.manipulate(asset.uri)
+        .resize({ width: AVATAR_SIZE, height: AVATAR_SIZE })
+        .renderAsync();
+      const { base64 } = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.85, base64: true });
+      image.release();
+      if (!base64) throw new Error('sem base64');
+      upload.mutate(`data:image/jpeg;base64,${base64}`, {
+        onError: (error) => notify('Foto não enviada', errorMessage(error)),
+      });
+    } catch {
+      notify('Foto não carregada', 'Não foi possível processar a imagem selecionada.');
     }
-    upload.mutate(`data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`, {
-      onError: () => notify('Foto não enviada', 'Verifique a conexão e tente novamente.'),
-    });
   }
 
   async function pickFromLibrary() {
@@ -47,7 +52,7 @@ export function AvatarSheet({ visible, onClose }: AvatarSheetProps) {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
-    if (!result.canceled && result.assets[0]) send(result.assets[0]);
+    if (!result.canceled && result.assets[0]) await send(result.assets[0]);
   }
 
   async function takePhoto() {
@@ -57,7 +62,7 @@ export function AvatarSheet({ visible, onClose }: AvatarSheetProps) {
       return;
     }
     const result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
-    if (!result.canceled && result.assets[0]) send(result.assets[0]);
+    if (!result.canceled && result.assets[0]) await send(result.assets[0]);
   }
 
   const actions: Action[] = [
@@ -67,7 +72,7 @@ export function AvatarSheet({ visible, onClose }: AvatarSheetProps) {
       : []),
     { id: 'library', label: Platform.OS === 'web' ? 'Escolher arquivo' : 'Escolher da galeria', icon: 'image', onPress: () => void pickFromLibrary() },
     ...(hasPhoto
-      ? [{ id: 'remove', label: 'Remover foto', icon: 'trash-2' as const, destructive: true, onPress: () => remove.mutate() }]
+      ? [{ id: 'remove', label: 'Remover foto', icon: 'trash-2' as const, destructive: true, onPress: () => remove.mutate(undefined, { onError: (error) => notify('Foto não removida', errorMessage(error)) }) }]
       : []),
   ];
 

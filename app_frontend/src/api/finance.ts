@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { stale } from '@/lib/query-client';
 import { api, apiList } from '@/lib/api';
 import type { PeriodFilter } from '@/lib/week';
 import { ALLOCATION_TONES, type AssetClass, type Transaction } from '@/screens/finance/data';
 import { keys } from './keys';
+import { invalidate } from './invalidate';
 import { compact, dec, num } from './mappers';
 
 // ---- Lançamentos (filtrados no servidor por período/offset)
@@ -45,6 +47,7 @@ export type FinanceSummary = {
 export function useFinanceSummary(period: PeriodFilter, offset: number) {
   return useQuery({
     queryKey: keys.finance.summary(period, offset),
+    staleTime: stale.stats,
     queryFn: async () => {
       const s = await api<Record<keyof FinanceSummary, string>>(`/api/finance/transactions/summary/?period=${period}&offset=${offset}`);
       return {
@@ -62,7 +65,7 @@ export function useFinanceSummary(period: PeriodFilter, offset: number) {
 
 function useTransactionMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ queryKey: keys.finance.all }) });
+  return useMutation({ mutationFn: fn, onSuccess: () => invalidate(qc, 'finance') });
 }
 
 export function useCreateTransaction() {
@@ -96,6 +99,7 @@ const withTones = (list: ApiAssetClass[]): AssetClass[] =>
 export function useAllocation() {
   return useQuery({
     queryKey: keys.finance.allocation,
+    staleTime: stale.catalog,
     queryFn: async () => withTones(await apiList<ApiAssetClass>('/api/finance/allocation/')),
   });
 }
@@ -105,8 +109,8 @@ function useAllocationMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: keys.finance.allocation });
-      qc.invalidateQueries({ queryKey: ['finance', 'summary'] });
+      // Alocação muda patrimônio, resumo, stats e a série de evolução
+      invalidate(qc, 'finance');
     },
   });
 }

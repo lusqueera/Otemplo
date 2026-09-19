@@ -1,12 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { stale } from '@/lib/query-client';
 import { api, apiList } from '@/lib/api';
 import { weekKey } from '@/lib/week';
 import type { Exercise, Workout } from '@/screens/training/data';
 import { keys } from './keys';
+import { invalidate } from './invalidate';
 import { compact, dec, hhmm, num, numOrUndefined } from './mappers';
 
-type ApiExercise = Omit<Exercise, 'id' | 'load' | 'delta'> & { id: number; load: string; delta: string | null; order: number };
+type ApiExercise = Omit<Exercise, 'id' | 'load' | 'delta'> & {
+  id: number;
+  load: string;
+  delta: string | null;
+  order: number;
+};
 type ApiWorkout = Omit<Workout, 'time' | 'exercises'> & {
   time: string | null;
   exercises: ApiExercise[];
@@ -65,6 +72,7 @@ const fromWorkout = (i: Partial<WorkoutInput>) =>
 export function useWorkouts() {
   return useQuery({
     queryKey: keys.training.workouts,
+    staleTime: stale.catalog,
     queryFn: async () => (await apiList<ApiWorkout>('/api/training/workouts/')).map(toWorkout),
   });
 }
@@ -75,20 +83,33 @@ function useWorkoutMutation<TVars>(fn: (vars: TVars) => Promise<Workout | void>)
     mutationFn: fn,
     onSuccess: (workout) => {
       if (workout) qc.setQueryData<Workout[]>(keys.training.workouts, (list) => list?.map((w) => (w.id === workout.id ? workout : w)));
-      qc.invalidateQueries({ queryKey: keys.training.workouts });
+      invalidate(qc, 'training');
     },
   });
 }
 
 export function useCreateWorkout() {
-  return useWorkoutMutation(async (input: WorkoutInput) =>
-    toWorkout(await api<ApiWorkout>('/api/training/workouts/', { method: 'POST', body: { ...fromWorkout(input), exercises: [] } })),
+  return useWorkoutMutation(async ({ exercises = [], ...input }: WorkoutInput & { exercises?: ExerciseInput[] }) =>
+    toWorkout(
+      await api<ApiWorkout>('/api/training/workouts/', {
+        method: 'POST',
+        body: {
+          ...fromWorkout(input),
+          exercises: exercises.map((e) => fromExercise({ ...e, done: false })),
+        },
+      }),
+    ),
   );
 }
 
 export function useUpdateWorkout() {
   return useWorkoutMutation(async ({ id, ...input }: { id: string } & Partial<WorkoutInput>) =>
-    toWorkout(await api<ApiWorkout>(`/api/training/workouts/${id}/`, { method: 'PATCH', body: fromWorkout(input) })),
+    toWorkout(
+      await api<ApiWorkout>(`/api/training/workouts/${id}/`, {
+        method: 'PATCH',
+        body: fromWorkout(input),
+      }),
+    ),
   );
 }
 
@@ -96,17 +117,28 @@ export function useDeleteWorkout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api<void>(`/api/training/workouts/${id}/`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.training.all }),
+    onSuccess: () => invalidate(qc, 'training'),
   });
 }
 
 // Exercícios: a API substitui a lista inteira no PATCH; aqui a lista é reconstruída a partir do cache
+/** Callbacks por chamada (onSuccess/onError) — os sheets fecham só depois da resposta. */
+type MutateOptions = {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+};
+
 function useReplaceExercises() {
   const qc = useQueryClient();
   return useWorkoutMutation(async ({ workoutId, build }: { workoutId: string; build: (current: Exercise[]) => Partial<Exercise>[] }) => {
     const current = qc.getQueryData<Workout[]>(keys.training.workouts)?.find((w) => w.id === workoutId)?.exercises ?? [];
     const exercises = build(current).map(fromExercise);
-    return toWorkout(await api<ApiWorkout>(`/api/training/workouts/${workoutId}/`, { method: 'PATCH', body: { exercises } }));
+    return toWorkout(
+      await api<ApiWorkout>(`/api/training/workouts/${workoutId}/`, {
+        method: 'PATCH',
+        body: { exercises },
+      }),
+    );
   });
 }
 
@@ -114,8 +146,8 @@ export function useAddExercise() {
   const replace = useReplaceExercises();
   return {
     ...replace,
-    mutate: (workoutId: string, input: ExerciseInput) =>
-      replace.mutate({ workoutId, build: (list) => [...list, { ...input, done: false }] }),
+    mutate: (workoutId: string, input: ExerciseInput, options?: MutateOptions) =>
+      replace.mutate({ workoutId, build: (list) => [...list, { ...input, done: false }] }, options),
   };
 }
 
@@ -123,8 +155,14 @@ export function useUpdateExercise() {
   const replace = useReplaceExercises();
   return {
     ...replace,
-    mutate: (workoutId: string, id: string, input: Partial<ExerciseInput>) =>
-      replace.mutate({ workoutId, build: (list) => list.map((e) => (e.id === id ? { ...e, ...input } : e)) }),
+    mutate: (workoutId: string, id: string, input: Partial<ExerciseInput>, options?: MutateOptions) =>
+      replace.mutate(
+        {
+          workoutId,
+          build: (list) => list.map((e) => (e.id === id ? { ...e, ...input } : e)),
+        },
+        options,
+      ),
   };
 }
 
@@ -132,7 +170,8 @@ export function useRemoveExercise() {
   const replace = useReplaceExercises();
   return {
     ...replace,
-    mutate: (workoutId: string, id: string) => replace.mutate({ workoutId, build: (list) => list.filter((e) => e.id !== id) }),
+    mutate: (workoutId: string, id: string, options?: MutateOptions) =>
+      replace.mutate({ workoutId, build: (list) => list.filter((e) => e.id !== id) }, options),
   };
 }
 
@@ -143,7 +182,14 @@ export function useToggleExercise() {
       toExercise(await api<ApiExercise>(`/api/training/workouts/${workoutId}/exercises/${id}/toggle/`, { method: 'POST' })),
     onSuccess: (exercise, { workoutId }) =>
       qc.setQueryData<Workout[]>(keys.training.workouts, (list) =>
-        list?.map((w) => (w.id === workoutId ? { ...w, exercises: w.exercises.map((e) => (e.id === exercise.id ? exercise : e)) } : w)),
+        list?.map((w) =>
+          w.id === workoutId
+            ? {
+                ...w,
+                exercises: w.exercises.map((e) => (e.id === exercise.id ? exercise : e)),
+              }
+            : w,
+        ),
       ),
   });
 }
@@ -163,7 +209,10 @@ export function useTonnage(weeks = 6) {
   return useQuery({
     queryKey: [...keys.training.tonnage, weeks],
     queryFn: async () =>
-      (await api<{ week: string; volumeKg: string }[]>(`/api/training/tonnage/?weeks=${weeks}`)).map((p) => ({ week: p.week, volumeKg: num(p.volumeKg) })),
+      (await api<{ week: string; volumeKg: string }[]>(`/api/training/tonnage/?weeks=${weeks}`)).map((p) => ({
+        week: p.week,
+        volumeKg: num(p.volumeKg),
+      })),
   });
 }
 
@@ -174,8 +223,12 @@ export function useFinishTrainingSession() {
     mutationFn: (input: { workoutId: string | null; durationSeconds: number; date?: string }) =>
       api('/api/training/sessions/finish/', {
         method: 'POST',
-        body: { workout: input.workoutId, durationSeconds: input.durationSeconds, date: input.date },
+        body: {
+          workout: input.workoutId,
+          durationSeconds: input.durationSeconds,
+          date: input.date,
+        },
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.training.all }),
+    onSuccess: () => invalidate(qc, 'training'),
   });
 }
