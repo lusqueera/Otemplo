@@ -31,7 +31,7 @@ systemctl is-active --quiet atelier.service || { sudo journalctl -u atelier -n 3
 echo "==> health"
 # Com TLS ativo o nginx só atende pelo domínio; resolve-o para 127.0.0.1 para testar a máquina local
 DOMAIN="$(grep -E '^DUCKDNS_DOMAIN=' .env | cut -d= -f2- | tr -d '\r')"
-if [ -n "$DOMAIN" ] && [ -d "/etc/letsencrypt/live/${DOMAIN}.duckdns.org" ]; then
+if [ -n "$DOMAIN" ] && grep -qs "listen 443" /etc/nginx/sites-available/atelier; then
   HEALTH_URL="https://${DOMAIN}.duckdns.org/health/"
   RESOLVE=(--resolve "${DOMAIN}.duckdns.org:443:127.0.0.1")
 else
