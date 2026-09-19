@@ -29,5 +29,14 @@ sleep 2
 systemctl is-active --quiet atelier.service || { sudo journalctl -u atelier -n 30 --no-pager; exit 1; }
 
 echo "==> health"
-curl -fsS -w "\nHTTP %{http_code}\n" http://127.0.0.1/health/ || { sudo journalctl -u atelier -n 30 --no-pager; exit 1; }
+# Com TLS ativo o nginx só atende pelo domínio; resolve-o para 127.0.0.1 para testar a máquina local
+DOMAIN="$(grep -E '^DUCKDNS_DOMAIN=' .env | cut -d= -f2- | tr -d '\r')"
+if [ -n "$DOMAIN" ] && [ -d "/etc/letsencrypt/live/${DOMAIN}.duckdns.org" ]; then
+  HEALTH_URL="https://${DOMAIN}.duckdns.org/health/"
+  RESOLVE=(--resolve "${DOMAIN}.duckdns.org:443:127.0.0.1")
+else
+  HEALTH_URL="http://127.0.0.1/health/"
+  RESOLVE=()
+fi
+curl -fsS "${RESOLVE[@]}" -w "\nHTTP %{http_code}\n" "$HEALTH_URL" || { sudo journalctl -u atelier -n 30 --no-pager; exit 1; }
 echo "Deploy concluído."
