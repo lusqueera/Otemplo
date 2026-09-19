@@ -1,0 +1,11 @@
+[Unit]
+Description=Keep-alive do Supabase (banco + storage)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/srv/atelier
+EnvironmentFile=/srv/atelier/.env
+ExecStart=/srv/atelier/.venv/bin/python manage.py supabase_keepalive

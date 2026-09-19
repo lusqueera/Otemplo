@@ -1,0 +1,75 @@
+# Deploy do backend na VPS a cada push na main que toque em app_backend/.
+# Secrets necessários no repositório (Settings → Secrets and variables → Actions):
+#   VPS_HOST      147.15.88.84
+#   VPS_USER      ubuntu
+#   VPS_SSH_KEY   conteúdo da chave privada (~/.ssh/ssh-key-2026-09-19.key)
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app_backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app_backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SECRET_KEY: ci-only-not-secret
+      DEBUG: "0"
+      DB_NAME: test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: app_backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: ruff check brain core && ruff format --check brain core
+      - run: python manage.py test brain --noinput
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Chave SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sincronizar código
+        run: |
+          rsync -az --delete \
+            --exclude ".venv" --exclude ".env" --exclude "media" --exclude "staticfiles" \
+            --exclude "__pycache__" --exclude "*.pyc" --exclude "*.log" --exclude ".git" --exclude ".github" \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            app_backend/ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/srv/atelier/"
+
+      - name: Executar deploy
+        run: ssh -i ~/.ssh/deploy_key "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "bash /srv/atelier/deploy/deploy.sh"

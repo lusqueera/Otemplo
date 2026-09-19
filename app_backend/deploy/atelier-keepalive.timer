@@ -1,0 +1,11 @@
+[Unit]
+Description=Roda o keep-alive do Supabase todo dia às 09:00 (horário de São Paulo)
+
+[Timer]
+OnCalendar=*-*-* 09:00:00
+# Se a VPS estava desligada no horário, executa assim que ligar
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target

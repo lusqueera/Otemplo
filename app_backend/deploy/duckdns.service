@@ -1,0 +1,9 @@
+[Unit]
+Description=Atualiza o IP no DuckDNS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/bin/bash /srv/atelier/deploy/duckdns-update.sh

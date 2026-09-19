@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Atelier Noir",
+    "slug": "atelier-noir",
+    "version": "1.0.0",
+    "scheme": "ateliernoir",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ateliernoir.app",
+      "icon": "./assets/icon.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#131313",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ateliernoir.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png",
+      "name": "Atelier Noir",
+      "shortName": "Atelier Noir",
+      "backgroundColor": "#131313",
+      "themeColor": "#131313"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O app acessa suas fotos para definir a foto de perfil.",
+          "cameraPermission": "O app usa a câmera para tirar sua foto de perfil."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#131313"
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "backgroundColor": "#131313"
+  }
+}

@@ -1,0 +1,15 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+media/
+staticfiles/
+db.sqlite3
+.idea/
+.vscode/
+*.log
+.ruff_cache/
+schema.yaml
+.env.*
+!.env.example
+.claude/

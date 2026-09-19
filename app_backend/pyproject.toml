@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+extend-exclude = ["migrations", ".venv"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: isort, PLC0415: import fora do topo do módulo, B: bugbear, UP: pyupgrade
+select = ["E", "W", "F", "I", "B", "UP", "PLC0415"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["brain", "core"]

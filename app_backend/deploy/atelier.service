@@ -1,0 +1,23 @@
+[Unit]
+Description=Atelier Noir API (gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/srv/atelier
+EnvironmentFile=/srv/atelier/.env
+# 1 GB de RAM: 2 workers síncronos bastam para a API
+ExecStart=/srv/atelier/.venv/bin/gunicorn core.wsgi:application \
+  --bind unix:/run/atelier/atelier.sock --umask 007 \
+  --workers 2 \
+  --timeout 60 \
+  --access-logfile /var/log/atelier/access.log \
+  --error-logfile /var/log/atelier/error.log
+RuntimeDirectory=atelier
+RuntimeDirectoryMode=0750
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
