@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 
 import { ProgressBar } from '@/components/progress-bar';
 import { Tag } from '@/components/tag';
+import { DeletingOverlay } from '@/components/deleting-overlay';
 import { colors } from '@/theme/colors';
 import { PRIORITY_LABEL, type Subject } from '../data';
 
@@ -12,16 +13,18 @@ type SubjectCardProps = {
   /** Flashcards pendentes desta matéria. */
   dueCount: number;
   onStart: (subject: Subject) => void;
+  /** Exclusão em andamento: card fica coberto e inerte. */
+  deleting?: boolean;
   onMore: (subject: Subject) => void;
 };
 
-export function SubjectCard({ subject, dueCount, onStart, onMore }: SubjectCardProps) {
+export function SubjectCard({ subject, dueCount, onStart, onMore, deleting }: SubjectCardProps) {
   const progress = subject.hoursGoal > 0 ? subject.hoursDone / subject.hoursGoal : 0;
   const percent = Math.round(progress * 100);
 
   return (
     // Sem Pressable no cartão inteiro: na web <button> aninhado engole o clique do "play"
-    <View style={styles.card}>
+    <View style={styles.card} pointerEvents={deleting ? 'none' : 'auto'}>
       <View style={styles.header}>
         <Pressable style={styles.headerText} onPress={() => onMore(subject)} accessibilityRole="button">
           <View style={styles.tagRow}>
@@ -51,6 +54,7 @@ export function SubjectCard({ subject, dueCount, onStart, onMore }: SubjectCardP
         </View>
         <ProgressBar value={progress} />
       </View>
+      {deleting && <DeletingOverlay />}
     </View>
   );
 }

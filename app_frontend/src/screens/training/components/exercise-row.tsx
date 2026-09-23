@@ -2,12 +2,15 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { DeletingOverlay } from '@/components/deleting-overlay';
 import { colors } from '@/theme/colors';
 import type { Exercise } from '../data';
 
 type ExerciseRowProps = {
   exercise: Exercise;
   onToggle: (exercise: Exercise) => void;
+  /** Remoção em andamento: linha fica coberta e inerte. */
+  deleting?: boolean;
   onPress: (exercise: Exercise) => void;
 };
 
@@ -15,14 +18,14 @@ function formatDelta(delta: number) {
   return `${delta > 0 ? '+' : ''}${delta} kg`;
 }
 
-export function ExerciseRow({ exercise, onToggle, onPress }: ExerciseRowProps) {
+export function ExerciseRow({ exercise, onToggle, onPress, deleting }: ExerciseRowProps) {
   const detail = [`${exercise.sets}× ${exercise.reps}`, exercise.load > 0 ? `Carga atual: ${exercise.load} kg` : null]
     .filter(Boolean)
     .join(' • ');
 
   return (
     // Linha em View: na web um botão dentro de outro botão faz o check cair no onPress da linha
-    <View style={styles.row}>
+    <View style={styles.row} pointerEvents={deleting ? 'none' : 'auto'}>
       <Pressable style={styles.body} onPress={() => onPress(exercise)} accessibilityRole="button">
         <View style={styles.icon}>
           <MaterialCommunityIcons name={exercise.icon} size={20} color={colors.text} />
@@ -57,6 +60,7 @@ export function ExerciseRow({ exercise, onToggle, onPress }: ExerciseRowProps) {
       >
         <Feather name="check" size={16} color={exercise.done ? colors.buttonText : colors.muted} />
       </Pressable>
+      {deleting && <DeletingOverlay label="Removendo…" />}
     </View>
   );
 }

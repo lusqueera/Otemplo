@@ -191,7 +191,12 @@ export default function FinanceScreen() {
           ) : (
             <View style={styles.list}>
               {recent.map((t) => (
-                <TransactionRow key={t.id} transaction={t} onPress={(tx) => setSheet({ kind: 'tx-actions', transaction: tx })} />
+                <TransactionRow
+                  key={t.id}
+                  transaction={t}
+                  onPress={(tx) => setSheet({ kind: 'tx-actions', transaction: tx })}
+                  deleting={deleteTransaction.isPending && deleteTransaction.variables === t.id}
+                />
               ))}
               {filtered.length > RECENT_LIMIT && (
                 <Pressable style={styles.more} onPress={() => setSheet({ kind: 'tx-all' })} accessibilityRole="button">
@@ -240,6 +245,7 @@ export default function FinanceScreen() {
               transaction={t}
               onCard
               onPress={(tx) => setSheet({ kind: 'tx-form', transaction: tx })}
+              deleting={deleteTransaction.isPending && deleteTransaction.variables === t.id}
             />
           ))}
         </View>

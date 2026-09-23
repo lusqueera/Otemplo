@@ -3,6 +3,7 @@ import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { formatBRL, formatDateShort } from '@/lib/format';
+import { DeletingOverlay } from '@/components/deleting-overlay';
 import { colors } from '@/theme/colors';
 import type { Transaction } from '../data';
 
@@ -11,9 +12,11 @@ type TransactionRowProps = {
   onPress: (transaction: Transaction) => void;
   /** Fundo mais escuro quando renderizada dentro de um sheet. */
   onCard?: boolean;
+  /** Exclusão em andamento: linha fica coberta e inerte. */
+  deleting?: boolean;
 };
 
-export function TransactionRow({ transaction, onPress, onCard }: TransactionRowProps) {
+export function TransactionRow({ transaction, onPress, onCard, deleting }: TransactionRowProps) {
   // Investimento é aporte (fica no patrimônio), então aparece como entrada, não como gasto
   const isIncome = transaction.kind === 'income' || transaction.kind === 'investment';
   return (
@@ -21,6 +24,7 @@ export function TransactionRow({ transaction, onPress, onCard }: TransactionRowP
       style={[styles.row, onCard && styles.rowOnCard]}
       onPress={() => onPress(transaction)}
       accessibilityRole="button"
+      disabled={deleting}
     >
       <View style={[styles.icon, onCard && styles.iconOnCard]}>
         <MaterialCommunityIcons name={transaction.icon} size={20} color={colors.text} />
@@ -44,6 +48,7 @@ export function TransactionRow({ transaction, onPress, onCard }: TransactionRowP
         {isIncome ? '+' : '−'}
         {formatBRL(transaction.amount)}
       </Text>
+      {deleting && <DeletingOverlay />}
     </Pressable>
   );
 }

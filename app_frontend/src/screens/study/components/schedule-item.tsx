@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Feather } from '@expo/vector-icons';
 
+import { DeletingOverlay } from '@/components/deleting-overlay';
 import { colors } from '@/theme/colors';
 import type { ScheduleBlock, ScheduleStatus } from '../data';
 
@@ -41,14 +42,16 @@ type ScheduleItemProps = {
   onPress: (block: ScheduleBlock) => void;
   /** Toque no ícone de status: alterna concluído / pendente. */
   onToggle: (block: ScheduleBlock) => void;
+  /** Remoção em andamento: bloco fica coberto e inerte. */
+  deleting?: boolean;
 };
 
-export function ScheduleItem({ block, isLast, onPress, onToggle }: ScheduleItemProps) {
+export function ScheduleItem({ block, isLast, onPress, onToggle, deleting }: ScheduleItemProps) {
   const done = block.status === 'done';
   const next = block.status === 'next';
 
   return (
-    <View style={styles.row}>
+    <View style={styles.row} pointerEvents={deleting ? 'none' : 'auto'}>
       <View style={styles.rail}>
         <Pressable
           onPress={() => onToggle(block)}
@@ -84,6 +87,7 @@ export function ScheduleItem({ block, isLast, onPress, onToggle }: ScheduleItemP
         <Text style={[styles.title, done && styles.titleDone]}>{block.title}</Text>
         {block.description ? <Text style={styles.description}>{block.description}</Text> : null}
       </Pressable>
+      {deleting && <DeletingOverlay label="Removendo…" radius={12} />}
     </View>
   );
 }

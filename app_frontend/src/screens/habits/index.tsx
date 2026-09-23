@@ -204,6 +204,7 @@ export default function HabitsScreen() {
                 onToggle={(h) => toggleHabit(h.id)}
                 onIncrement={(h) => incrementQuantity(h.id)}
                 onPress={(h) => setSheet({ kind: 'actions', habit: h })}
+                deleting={deleteHabit.isPending && deleteHabit.variables === habit.id}
               />
             ))
           )}

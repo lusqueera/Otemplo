@@ -275,6 +275,7 @@ export default function StudyScreen() {
                 dueCount={dueFlashcards.filter((c) => c.subjectId === subject.id).length}
                 onStart={(s) => setSheet({ kind: 'start', subjectId: s.id })}
                 onMore={(s) => setSheet({ kind: 'subject-actions', subject: s })}
+                deleting={deleteSubject.isPending && deleteSubject.variables === subject.id}
               />
             ))
           )}
@@ -322,6 +323,7 @@ export default function StudyScreen() {
                   isLast={i === schedule.length - 1}
                   onPress={(b) => setSheet({ kind: 'schedule-form', block: b })}
                   onToggle={toggleBlock}
+                  deleting={deleteBlock.isPending && deleteBlock.variables === block.id}
                 />
               ))}
             </View>

@@ -87,6 +87,8 @@ export default function TrainingScreen() {
   const exercises = workout?.exercises ?? [];
 
   const [tab, setTab] = useState<Tab>('mine');
+  // A mutation de exercícios recebe a lista inteira; guarda-se qual id está saindo
+  const [removingExerciseId, setRemovingExerciseId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [sheet, setSheet] = useState<SheetState>({ kind: 'none' });
   const close = () => setSheet({ kind: 'none' });
@@ -118,7 +120,8 @@ export default function TrainingScreen() {
   function handleDeleteExercise(e: Exercise) {
     if (!workout) return;
     confirmDelete('Remover exercício', `"${e.name}" será removido da ficha.`, () => {
-      removeExercise.mutate(workout.id, e.id);
+      setRemovingExerciseId(e.id);
+      removeExercise.mutate(workout.id, e.id, { onSettled: () => setRemovingExerciseId(null) });
       close();
     });
   }
@@ -299,6 +302,7 @@ export default function TrainingScreen() {
               workout={workout}
               onMore={() => setSheet({ kind: 'workout-actions' })}
               onCreate={() => setSheet({ kind: 'workout-form' })}
+              deleting={deleteWorkout.isPending && deleteWorkout.variables === workout?.id}
             />
 
             {workout && (
@@ -330,6 +334,7 @@ export default function TrainingScreen() {
                         exercise={exercise}
                         onToggle={(e) => toggleExercise(workout.id, e.id)}
                         onPress={(e) => setSheet({ kind: 'exercise-actions', exercise: e })}
+                        deleting={removingExerciseId === exercise.id}
                       />
                     ))
                   )}

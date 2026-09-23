@@ -126,6 +126,7 @@ export function useDeleteWorkout() {
 type MutateOptions = {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
+  onSettled?: () => void;
 };
 
 function useReplaceExercises() {

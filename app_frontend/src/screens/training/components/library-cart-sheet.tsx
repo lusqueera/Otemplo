@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Feather } from '@expo/vector-icons';
@@ -34,19 +34,14 @@ export function LibraryCartSheet({ visible, onClose, onCreated }: LibraryCartShe
   const createWorkout = useCreateWorkout();
 
   const suggested = suggestWorkoutTitle(items);
-  const [title, setTitle] = useState(suggested);
-  const [touched, setTouched] = useState(false);
+  // `null` = ainda não editado: o nome acompanha o carrinho sem precisar de efeito
+  const [customTitle, setCustomTitle] = useState<string | null>(null);
   const [time, setTime] = useState('18:30');
   const [intensity, setIntensity] = useState<Intensity>('moderate');
   const [restSeconds, setRestSeconds] = useState(90);
 
-  // O nome acompanha o carrinho até o usuário editá-lo
-  useEffect(() => {
-    if (!touched) setTitle(suggested);
-  }, [suggested, touched]);
-  useEffect(() => {
-    if (visible) setTouched(false);
-  }, [visible]);
+  const title = customTitle ?? suggested;
+  const touched = customTitle !== null;
 
   const scheduledAt = normalizeTime(time);
   const canCreate = items.length > 0 && title.trim().length > 0 && scheduledAt !== null;
@@ -67,6 +62,7 @@ export function LibraryCartSheet({ visible, onClose, onCreated }: LibraryCartShe
         onSuccess: (created) => {
           if (created) useTrainingStore.getState().selectWorkout(created.id);
           clear();
+          setCustomTitle(null);
           onClose();
           onCreated();
           notify(
@@ -133,10 +129,7 @@ export function LibraryCartSheet({ visible, onClose, onCreated }: LibraryCartShe
             label="Nome do treino"
             placeholder={suggested}
             value={title}
-            onChangeText={(v) => {
-              setTouched(true);
-              setTitle(v);
-            }}
+            onChangeText={setCustomTitle}
             hint={!touched ? 'Sugerido pelos grupos musculares escolhidos.' : undefined}
           />
           <Field

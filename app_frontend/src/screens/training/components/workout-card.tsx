@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Feather } from '@expo/vector-icons';
 
+import { DeletingOverlay } from '@/components/deleting-overlay';
 import { ProgressBar } from '@/components/progress-bar';
 import { Tag } from '@/components/tag';
 import { useFinishTrainingSession } from '@/api/training';
@@ -13,6 +14,8 @@ type WorkoutCardProps = {
   workout: Workout | undefined;
   onMore: () => void;
   onCreate: () => void;
+  /** Exclusão em andamento: card fica coberto e inerte. */
+  deleting?: boolean;
 };
 
 function formatElapsed(seconds: number) {
@@ -21,7 +24,7 @@ function formatElapsed(seconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function WorkoutCard({ workout, onMore, onCreate }: WorkoutCardProps) {
+export function WorkoutCard({ workout, onMore, onCreate, deleting }: WorkoutCardProps) {
   const session = useTrainingStore((s) => s.session);
   const finish = useFinishTrainingSession();
 
@@ -53,7 +56,7 @@ export function WorkoutCard({ workout, onMore, onCreate }: WorkoutCardProps) {
   const volume = estimateVolumeKg(workout.exercises);
 
   return (
-    <View style={styles.card}>
+    <View style={styles.card} pointerEvents={deleting ? 'none' : 'auto'}>
       <View style={styles.header}>
         <View style={styles.tags}>
           <Tag label={active ? 'Em andamento' : `Hoje • ${workout.time}`} variant="filled" />
@@ -112,6 +115,7 @@ export function WorkoutCard({ workout, onMore, onCreate }: WorkoutCardProps) {
           <Text style={styles.buttonHint}>• Descanso {workout.restSeconds}s</Text>
         </Pressable>
       )}
+      {deleting && <DeletingOverlay label="Excluindo treino…" />}
     </View>
   );
 }

@@ -3,6 +3,7 @@ import { Text } from 'react-native-paper';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ProgressBar } from '@/components/progress-bar';
+import { DeletingOverlay } from '@/components/deleting-overlay';
 import { colors } from '@/theme/colors';
 import type { Habit } from '../data';
 
@@ -14,13 +15,15 @@ type HabitCardProps = {
   onToggle: (habit: Habit) => void;
   onIncrement: (habit: Habit) => void;
   onPress: (habit: Habit) => void;
+  /** Exclusão em andamento: card fica coberto e inerte. */
+  deleting?: boolean;
 };
 
 function formatQty(value: number, unit: string) {
   return `${value.toLocaleString('pt-BR')}${unit}`;
 }
 
-export function HabitCard({ habit, weekly, done, onToggle, onIncrement, onPress }: HabitCardProps) {
+export function HabitCard({ habit, weekly, done, onToggle, onIncrement, onPress, deleting }: HabitCardProps) {
   const weeklyDone = weekly.filter(Boolean).length;
   const qty = habit.quantity;
   const qtyProgress = qty ? qty.current / qty.target : 0;
@@ -29,7 +32,7 @@ export function HabitCard({ habit, weekly, done, onToggle, onIncrement, onPress 
   return (
     // O cartão não é um Pressable: na web, <button> dentro de <button> é inválido e o clique
     // em "+ 250 ml" era entregue ao cartão. Só a área de texto abre as ações.
-    <View style={styles.card}>
+    <View style={styles.card} pointerEvents={deleting ? 'none' : 'auto'}>
       <View style={styles.main}>
         <Pressable style={styles.body} onPress={() => onPress(habit)} accessibilityRole="button">
           <View style={styles.icon}>
@@ -107,6 +110,7 @@ export function HabitCard({ habit, weekly, done, onToggle, onIncrement, onPress 
           </View>
         </View>
       )}
+      {deleting && <DeletingOverlay />}
     </View>
   );
 }

@@ -27,18 +27,20 @@ export function LibraryExerciseSheet({ exercise, onClose }: LibraryExerciseSheet
   const inCart = useLibraryCart((s) => (exercise ? s.has(exercise.id) : false));
   const toggleCart = useLibraryCart((s) => s.toggle);
 
-  const [frame, setFrame] = useState(0);
+  const [tick, setFrame] = useState(0);
   const [workoutId, setWorkoutId] = useState<string | null>(null);
 
   const visible = !!exercise;
   const frames = exercise?.images.length ?? 0;
+  const frame = frames ? tick % frames : 0;
 
+  // O contador só cresce; o quadro exibido é o resto pelo número de fotos, então trocar de
+  // exercício não precisa zerar o estado dentro do efeito (evita render em cascata).
   useEffect(() => {
     if (!visible || frames < 2) return;
-    setFrame(0);
-    const id = setInterval(() => setFrame((f) => (f + 1) % frames), FRAME_MS);
+    const id = setInterval(() => setFrame((f) => f + 1), FRAME_MS);
     return () => clearInterval(id);
-  }, [visible, frames, exercise?.id]);
+  }, [visible, frames]);
 
   // Ficha alvo: a selecionada para hoje, senão a primeira
   const targetId = workoutId ?? todayWorkoutId ?? workouts[0]?.id ?? null;
