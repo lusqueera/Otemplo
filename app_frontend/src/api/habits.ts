@@ -17,7 +17,8 @@ type ApiHabit = Omit<Habit, 'scheduledAt' | 'quantity'> & {
 const toHabit = (h: ApiHabit): Habit => ({
   ...h,
   scheduledAt: hhmmOrUndefined(h.scheduledAt),
-  quantity: h.quantity ?? undefined,
+  // Sem `target` não é hábito quantitativo: a tela usaria números nulos e quebraria
+  quantity: h.quantity && h.quantity.target ? h.quantity : undefined,
 });
 
 export type HabitInput = Omit<Habit, 'id' | 'streak' | 'weekly'>;

@@ -144,6 +144,8 @@ class HabitTests(AuthMixin, APITestCase):
             habit_id=Habit.objects.get(external_id=habit["id"]).pk, date=date.today() - timedelta(days=1)
         )
 
+        self.assertIsNone(habit["quantity"])  # hábito simples não expõe meta vazia
+
         res = self.client.post(reverse("habit-toggle", args=[habit["id"]]), {}, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK, res.json())
         week = res.json()["weekly"][week_start().isoformat()]

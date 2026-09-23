@@ -38,6 +38,13 @@ class HabitSerializer(OwnedSerializer):
         days = prefetched[habit.pk] if prefetched and habit.pk in prefetched else weekly_of(habit, start)
         return {start.isoformat(): days}
 
+    def to_representation(self, habit):
+        data = super().to_representation(habit)
+        # Sem meta definida o hábito é simples: `quantity` vira null em vez de um objeto vazio
+        if habit.quantity_target is None:
+            data["quantity"] = None
+        return data
+
     def to_internal_value(self, data):
         # `quantity: null` limpa o hábito quantitativo
         clear = "quantity" in data and data["quantity"] is None
