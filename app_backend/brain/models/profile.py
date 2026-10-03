@@ -13,7 +13,13 @@ class Profile(BaseModel):
         EASTERN = "eastern", "Oriental"
         MODERN = "modern", "Contemporânea"
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        to_field="user_uuid",
+        db_column="user_uuid",
+        related_name="profile",
+    )
 
     # Metas semanais
     study_hours = models.PositiveSmallIntegerField(default=25)

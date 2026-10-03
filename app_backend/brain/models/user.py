@@ -1,4 +1,5 @@
 from typing import ClassVar
+from uuid import uuid4
 
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -34,6 +35,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     """Usuário autenticado por e-mail."""
 
+    user_uuid = models.UUIDField(default=uuid4, unique=True, editable=False)
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=255)
     title = models.CharField(max_length=100, blank=True)
