@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { ExerciseGroup, ExerciseIcon } from '@/screens/training/data';
+import NAMES_PT from './exercise-names-pt.json';
 import type { ExerciseInput } from './training';
+
+const namesPt: Record<string, string> = NAMES_PT;
 
 /**
  * Biblioteca pública de exercícios.
@@ -12,8 +15,10 @@ import type { ExerciseInput } from './training';
  * pública responde 402 DEPLOYMENT_DISABLED e o fork responde 500 sem banco — e o dataset
  * não vem no repositório.
  *
- * Tradução: a base é só em inglês (nome e instruções). Categorias, músculos, equipamento e
- * nível são traduzidos aqui por mapeamento; o texto das instruções permanece em inglês.
+ * Tradução: a base é só em inglês. Os nomes vêm de `exercise-names-pt.json` (tradução fixa por
+ * id, com o jargão de academia brasileiro); categorias, músculos, equipamento e nível são
+ * mapeados aqui. As instruções traduzidas (~540 KB) ficam no Supabase Storage e só são baixadas
+ * quando alguém abre o detalhe de um exercício (`useExerciseInstructionsPt`).
  */
 
 const BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main';
@@ -121,7 +126,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export type LibraryExercise = {
   id: string;
+  /** Nome em português (cai no original se o id ainda não tiver tradução). */
   name: string;
+  /** Nome original em inglês. */
+  nameEn: string;
   bodyPart: BodyPart;
   /** Rótulos já traduzidos. */
   primaryMuscles: string[];
@@ -150,9 +158,11 @@ const normalize = (s: string) =>
 function toLibraryExercise(e: RawExercise): LibraryExercise {
   const primary = e.primaryMuscles.map((m) => label(MUSCLE_LABEL, m));
   const secondary = e.secondaryMuscles.map((m) => label(MUSCLE_LABEL, m));
+  const name = namesPt[e.id] ?? e.name;
   return {
     id: e.id,
-    name: e.name,
+    name,
+    nameEn: e.name,
     bodyPart: MUSCLE_BODY_PART[e.primaryMuscles[0]] ?? 'core',
     primaryMuscles: primary,
     secondaryMuscles: secondary,
@@ -161,7 +171,8 @@ function toLibraryExercise(e: RawExercise): LibraryExercise {
     category: label(CATEGORY_LABEL, e.category),
     instructions: e.instructions,
     images: e.images.map((path) => `${BASE}/exercises/${path}`),
-    searchText: normalize([e.name, ...primary, ...secondary, e.equipment ?? ''].join(' ')),
+    // Busca pelo nome em português e pelo original (quem conhece o exercício em inglês também acha)
+    searchText: normalize([name, e.name, ...primary, ...secondary, e.equipment ?? ''].join(' ')),
     raw: { category: e.category, equipment: e.equipment, primaryMuscles: e.primaryMuscles },
   };
 }
@@ -169,13 +180,32 @@ function toLibraryExercise(e: RawExercise): LibraryExercise {
 /** Catálogo completo (≈1 MB). Muda raramente: fica 24 h fresco e persiste em disco. */
 export function useExerciseLibrary() {
   return useQuery({
-    queryKey: ['exercise-library'],
+    // Versão na chave: o catálogo transformado fica persistido; mudar a tradução exige descartar o antigo
+    queryKey: ['exercise-library', 'pt-1'],
     staleTime: 24 * 60 * 60 * 1000,
     queryFn: async () => {
       const res = await fetch(`${BASE}/dist/exercises.json`);
       if (!res.ok) throw new Error(`Biblioteca indisponível (${res.status})`);
       const data = (await res.json()) as RawExercise[];
       return data.filter((e) => e.images.length > 0).map(toLibraryExercise);
+    },
+  });
+}
+
+// Arquivo imutável: uma tradução nova sobe com outro sufixo (-v2) e a chave abaixo muda junto
+const INSTRUCTIONS_PT_URL =
+  'https://wugegyteypumgjjihjmt.supabase.co/storage/v1/object/public/media/library/exercise-instructions-pt-v1.json';
+
+/** Instruções em português por id do exercício. Baixadas uma vez e mantidas em cache. */
+export function useExerciseInstructionsPt(enabled = true) {
+  return useQuery({
+    queryKey: ['exercise-library', 'instructions-pt-v1'],
+    enabled,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const res = await fetch(INSTRUCTIONS_PT_URL);
+      if (!res.ok) throw new Error(`Instruções indisponíveis (${res.status})`);
+      return (await res.json()) as Record<string, string[]>;
     },
   });
 }

@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Feather } from '@expo/vector-icons';
 
-import { toExerciseInput, type LibraryExercise } from '@/api/exercise-library';
+import { toExerciseInput, useExerciseInstructionsPt, type LibraryExercise } from '@/api/exercise-library';
 import { useAddExercise, useWorkouts } from '@/api/training';
 import { Sheet, SheetButton } from '@/components/sheet';
 import { Tag } from '@/components/tag';
@@ -31,6 +31,8 @@ export function LibraryExerciseSheet({ exercise, onClose }: LibraryExerciseSheet
   const [workoutId, setWorkoutId] = useState<string | null>(null);
 
   const visible = !!exercise;
+  // Só baixa as instruções traduzidas quando o detalhe é aberto pela primeira vez
+  const { data: instructionsPt } = useExerciseInstructionsPt(visible);
   const frames = exercise?.images.length ?? 0;
   const frame = frames ? tick % frames : 0;
 
@@ -61,12 +63,16 @@ export function LibraryExerciseSheet({ exercise, onClose }: LibraryExerciseSheet
 
   if (!exercise) return null;
 
+  // Enquanto o arquivo carrega (ou se falhar), mostra o original em inglês
+  const stepsPt = instructionsPt?.[exercise.id];
+  const steps = stepsPt ?? exercise.instructions;
+
   return (
     <Sheet
       visible={visible}
       onClose={onClose}
       title={exercise.name}
-      subtitle={`${exercise.primaryMuscles.join(', ')} • ${exercise.equipment}`}
+      subtitle={`${exercise.nameEn !== exercise.name ? `${exercise.nameEn} • ` : ''}${exercise.primaryMuscles.join(', ')} • ${exercise.equipment}`}
       footer={
         <>
           <SheetButton
@@ -135,12 +141,14 @@ export function LibraryExerciseSheet({ exercise, onClose }: LibraryExerciseSheet
       <View style={styles.block}>
         <View style={styles.blockHeader}>
           <Text style={styles.blockTitle}>Execução</Text>
-          <View style={styles.lang}>
-            <Feather name="globe" size={11} color={colors.placeholder} />
-            <Text style={styles.langText}>EN</Text>
-          </View>
+          {!stepsPt && (
+            <View style={styles.lang}>
+              <Feather name="globe" size={11} color={colors.placeholder} />
+              <Text style={styles.langText}>EN</Text>
+            </View>
+          )}
         </View>
-        {exercise.instructions.map((step, i) => (
+        {steps.map((step, i) => (
           <View key={i} style={styles.step}>
             <Text style={styles.stepNumber}>{i + 1}</Text>
             <Text style={styles.stepText}>{step}</Text>
